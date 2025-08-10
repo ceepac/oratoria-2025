@@ -283,3 +283,30 @@ main .datos-participante span {
 .tabla-resultados th {
   background-color: #f0f0f0;
 }
+
+.botones-jurados {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+/* Rondas primero */
+.botones-jurados a:nth-child(1),
+.botones-jurados a:nth-child(2),
+.botones-jurados a:nth-child(3) {
+  order: 1;
+}
+
+/* Desempates después */
+.botones-jurados a:nth-child(4),
+.botones-jurados a:nth-child(5) {
+  order: 2;
+}
+
+/* Opcional: que los desempates tengan un estilo distinto */
+.botones-jurados a:nth-child(4),
+.botones-jurados a:nth-child(5) {
+  background: #f5f7fb;
+  border: 1px solid #d7dcec;
+  color: #2c3e50;
+}
