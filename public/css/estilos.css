@@ -310,36 +310,34 @@ main .datos-participante span {
   border: 1px solid #d7dcec;
   color: #2c3e50;
 }
-/* Hacemos el contenedor flex y ordenamos por grupos */
-.botones-jurados{
-  display: flex;
-  flex-wrap: wrap;
+.botones-jurados {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr); /* 3 columnas iguales */
   gap: 18px;
-  justify-content: center;
+  justify-items: center;
 }
 
-/* Rondas (primeros 3 links) → grupo 1 */
-.botones-jurados a:nth-child(-n+3){
-  order: 1;
-}
-
-/* Desempates (del 4º en adelante) → grupo 2 */
-.botones-jurados a:nth-child(n+4){
-  order: 2;
-  background: #f5f7fb;
-  border: 1px solid #d7dcec;
-  color: #2c3e50;
-}
-
-/* Separador invisible entre grupos para forzar salto de línea */
-.botones-jurados::after{
-  content: "";
-  flex-basis: 100%;
-  order: 1.5;
-}
-
-/* Opcional: tamaño mínimo para que se vean parejos */
-.botones-jurados a{
-  min-width: 240px; /* ajusta a tu gusto */
+.botones-jurados a {
+  min-width: 200px;
   text-align: center;
+}
+
+.botones-jurados a:nth-child(4),
+.botones-jurados a:nth-child(5) {
+  grid-column: span 1; /* ocupan una columna cada uno */
+}
+
+/* Hacemos que los botones de desempate empiecen en la segunda fila */
+.botones-jurados a:nth-child(4) {
+  grid-column-start: 1;
+}
+.botones-jurados a:nth-child(5) {
+  grid-column-start: 2;
+}
+
+/* Para pantallas pequeñas */
+@media (max-width: 600px) {
+  .botones-jurados {
+    grid-template-columns: 1fr;
+  }
 }
