@@ -110,7 +110,7 @@
     <section class="toolbar">
       <div class="lado-izq">
         <div class="form-group">
-          <label><input type="checkbox" id="cbDesempates" checked /> Aplicar desempates</label>
+          <label><input type="checkbox" id="cbDesempates" /> Aplicar desempates</label>
         </div>
         <div class="form-group">
           <label for="nombreConcurso"><strong>Concurso:</strong></label>
@@ -378,10 +378,13 @@
       const ronda = +rondaSelect.value;
       if (!ronda) { seccionRonda.style.display = 'none'; return; }
 
-      const usar = cbDesempates.checked;
+      // ✅ R2 jamás aplica overlay. R1 depende del checkbox. R3 nunca aplica overlay.
+      const aplicarOverlay = (ronda === 1) ? cbDesempates.checked : false;
+
       const [filas, filasDes] = await Promise.all([
-        fetchRondaAgrupada(ronda, usar),
-        usar ? fetchDesempatesAplicados(ronda) : Promise.resolve([])
+        fetchRondaAgrupada(ronda, aplicarOverlay),
+        // ✅ La subtabla informativa de desempates se muestra SIEMPRE en R1 y R2
+        (ronda === 1 || ronda === 2) ? fetchDesempatesAplicados(ronda) : Promise.resolve([])
       ]);
 
       tituloRonda.textContent = (ronda===3) ? 'Finalistas (Ronda 3)' : `Resultados por Ronda ${ronda}`;
@@ -416,9 +419,12 @@
       const usar = cbDesempates.checked;
 
       for (const ronda of [1,2,3]) {
+        // ✅ R2 sin overlay; R1 depende del checkbox; R3 sin overlay
+        const aplicarOverlay = (ronda === 1) ? usar : false;
+
         const [filas, filasDes] = await Promise.all([
-          fetchRondaAgrupada(ronda, usar),
-          usar ? fetchDesempatesAplicados(ronda) : Promise.resolve([])
+          fetchRondaAgrupada(ronda, aplicarOverlay),
+          (ronda === 1 || ronda === 2) ? fetchDesempatesAplicados(ronda) : Promise.resolve([])
         ]);
 
         const titulo = document.createElement('h3');
@@ -500,12 +506,17 @@
       const ahora=new Date().toISOString().slice(0,19).replace(/[:T]/g,'-');
       const concurso=nombreConcursoInput.value.trim()||'Concurso';
       const juradosTxt=JURADOS.join(' | ');
-      const [f1,f2,f3]=await Promise.all([fetchRondaAgrupada(1,usar),fetchRondaAgrupada(2,usar),fetchRondaAgrupada(3,usar)]);
+      // ✅ R2 sin overlay, R1 según checkbox, R3 sin overlay
+      const [f1,f2,f3]=await Promise.all([
+        fetchRondaAgrupada(1,usar),
+        fetchRondaAgrupada(2,false),
+        fetchRondaAgrupada(3,false)
+      ]);
       const encabezado=[
         `Concurso:,${sanitizeCSV(concurso)}`,
         `Jurados:,${sanitizeCSV(juradosTxt)}`,
         `Fecha:,${sanitizeCSV(new Date().toLocaleString())}`,
-        usar?`Nota:,Se aplicaron desempates en R1/R2 (si existen).`:`Nota:,Sin desempates.`,
+        usar?`Nota:,Se aplicaron desempates en R1 (y R2 visibles en subtabla).`:`Nota:,Sin overlay de desempates.`,
         ''
       ].join('\n');
       const csv=[encabezado,filasToCSV(f1,'Ronda 1'),'',
@@ -570,7 +581,7 @@
       if (usarDes) {
         const note = document.createElement('div');
         note.className = 'pdf-note';
-        note.textContent = 'Nota: Se aplicaron desempates en Ronda 1 y Ronda 2 (si existen).';
+        note.textContent = 'Nota: Se aplicaron desempates en Ronda 1 (R2 se muestra sin overlay y con subtabla).';
         cont.appendChild(note);
       }
 
@@ -647,7 +658,7 @@
           cont.appendChild(wrapF);
 
         } else {
-          // R2 normal
+          // R2 normal (sin overlay)
           const titulo=document.createElement('div');
           titulo.className='pdf-chunk-title';
           titulo.textContent = `Ronda ${b.ronda}`;
@@ -697,12 +708,13 @@
       const concurso=nombreConcursoInput.value.trim()||'Concurso';
       const usar = cbDesempates.checked;
 
+      // ✅ R2 sin overlay; subtablas de desempate siempre incluidas para R1 y R2
       const [f1,f2,f3, d1, d2] = await Promise.all([
         fetchRondaAgrupada(1,usar),
-        fetchRondaAgrupada(2,usar),
-        fetchRondaAgrupada(3,usar),
-        usar ? fetchDesempatesAplicados(1) : Promise.resolve([]),
-        usar ? fetchDesempatesAplicados(2) : Promise.resolve([]),
+        fetchRondaAgrupada(2,false),
+        fetchRondaAgrupada(3,false),
+        fetchDesempatesAplicados(1),
+        fetchDesempatesAplicados(2),
       ]);
 
       const [logoLeft, logoRight] = await Promise.all([ toDataURL(USER_LOGO_LEFT), toDataURL(USER_LOGO_RIGHT) ]);
