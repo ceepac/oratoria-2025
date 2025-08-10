@@ -117,11 +117,14 @@ app.listen(PORT, () => {
   console.log(`✅ Servidor corriendo en http://localhost:${PORT}`);
 });
 
+// 👇 Deja UNA sola definición así:
 const TABLAS_PERMITIDAS = new Set([
+  // Evaluaciones normales
   "evaluacion_j1_r1","evaluacion_j1_r2","evaluacion_j1_r3",
   "evaluacion_j2_r1","evaluacion_j2_r2","evaluacion_j2_r3",
   "evaluacion_j3_r1","evaluacion_j3_r2","evaluacion_j3_r3",
-  // 👇 NUEVAS
+  // Desempates
   "desempate_j1_r1","desempate_j2_r1","desempate_j3_r1",
   "desempate_j1_r2","desempate_j2_r2","desempate_j3_r2"
 ]);
+
