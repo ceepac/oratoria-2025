@@ -17,16 +17,6 @@
 <main class="container">
   <h1 id="titulo">Desempate</h1>
   <h2 id="subtitulo"></h2>
-  <div class="form-group" id="wrap-jurado" style="margin:8px 0 12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-    <label for="juradoSelect"><strong>Jurado (confirma):</strong></label>
-    <select id="juradoSelect">
-      <option value="j1">J1</option>
-      <option value="j2">J2</option>
-      <option value="j3">J3</option>
-    </select>
-    <span id="tablaDestino" style="font-size:12px;color:#334155;"></span>
-  </div>
-
 
   <form id="form-evaluacion">
     <div class="form-group">
@@ -119,30 +109,14 @@
   const params = new URLSearchParams(location.search);
   const RONDA = Number(params.get('ronda') || '1');    // 1 o 2
   const JURADO = (params.get('jurado') || 'j1').toLowerCase(); // j1|j2|j3
-  // Inicializar selector de Jurado y mostrar tabla destino
-  const juradoSel = document.getElementById('juradoSelect');
-  if (juradoSel) {
-    // Intenta recuperar jurado de localStorage si no viene en URL
-    const stored = localStorage.getItem('jurado_desempate');
-    const initial = (params.get('jurado') ? JURADO : (stored || JURADO));
-    juradoSel.value = ['j1','j2','j3'].includes(initial) ? initial : 'j1';
-    localStorage.setItem('jurado_desempate', juradoSel.value);
-
-    const tablaSpan = document.getElementById('tablaDestino');
-    const updateTablaLabel = () => {
-      const j = juradoSel.value;
-      tablaSpan.textContent = `Guardará en: ${TABLA_TB(j, RONDA)}`;
-    };
-    juradoSel.addEventListener('change', () => {
-      localStorage.setItem('jurado_desempate', juradoSel.value);
-      updateTablaLabel();
-    });
-    updateTablaLabel();
-  }
-
   const LIMITE = (RONDA === 1) ? 7 : 3;
   const TABLA_BASE = (j, r) => `evaluacion_${j}_r${r}`;
   const TABLA_TB   = (j, r) => `desempate_${j}_r${r}`;
+  // Debug: confirma tabla destino en consola
+  console.log('Desempate → jurado:', JURADO, 'ronda:', RONDA, 'tabla:', TABLA_TB(JURADO, RONDA));
+  console.log('[DES-DEBUG] RONDA=%s JURADO=%s TABLA=%s', RONDA, JURADO, TABLA_TB(JURADO, RONDA));
+
+
 
   // ⚙️ Reglas de temas en desempate
   const BLOQUEAR_TEMAS_REPETIDOS_MISMO_JURADO = false; // pon true si quieres bloquear
@@ -156,41 +130,71 @@
     (r?.presentacion||0) + (r?.dominio_tema||0) + (r?.dominio_auditorio||0) +
     (r?.diccion||0) + (r?.claridad_mensaje||0) + (r?.conclusion||0);
 
-  async function participantesEmpatadosEnCorte() {
-    // Traer tres jurados de la ronda base
-    const [{ data: rJ1 }, { data: rJ2 }, { data: rJ3 }] = await Promise.all([
-      supabase.from(TABLA_BASE('j1', RONDA)).select('*'),
-      supabase.from(TABLA_BASE('j2', RONDA)).select('*'),
-      supabase.from(TABLA_BASE('j3', RONDA)).select('*')
-    ]);
+  // Normaliza nombres para evitar diferencias por espacios/case
+  const norm = (s) => (s || '').replace(/\s+/g, ' ').trim();
 
-    // Totales globales
-    const totales = {};
-    for (const row of (rJ1 || [])) totales[row.participante] = (totales[row.participante]||0) + sumatoria(row);
-    for (const row of (rJ2 || [])) totales[row.participante] = (totales[row.participante]||0) + sumatoria(row);
-    for (const row of (rJ3 || [])) totales[row.participante] = (totales[row.participante]||0) + sumatoria(row);
-
-    const ranking = Object.entries(totales)
-      .map(([p, t]) => ({ participante: p, total: t }))
-      .sort((a,b) => b.total - a.total);
-
-    if (ranking.length === 0) return [];
-
-    const cutoffIndex = Math.min(LIMITE - 1, ranking.length - 1); // 6 para R1, 2 para R2
-    const cutoffScore = ranking[cutoffIndex].total;
-
-    // Empatados en el puntaje de corte
-    const empatados = ranking.filter(r => r.total === cutoffScore).map(r => r.participante);
-
-    // Excluir ya evaluados en este desempate por este jurado
-    const juradoFiltro = (document.getElementById('juradoSelect')?.value || JURADO);
-    const { data: ya } = await supabase
-      .from(TABLA_TB(juradoFiltro, RONDA))
-      .select('participante');
-
-    const yaSet = new Set((ya||[]).map(r => r.participante));
-    return empatados.filter(p => !yaSet.has(p));
+  // Devuelve el último registro por participante (según 'creada_en')
+  function ultimoPorParticipante(rows) {
+    const map = new Map();
+    (rows || []).forEach(r => {
+      const pKey = norm(r.participante);
+      if (!pKey) return;
+      const prev = map.get(pKey);
+      const dPrev = prev?.creada_en ? new Date(prev.creada_en) : null;
+      const dNow  = r.creada_en ? new Date(r.creada_en) : null;
+      if (!prev || (dNow && (!dPrev || dNow > dPrev))) map.set(pKey, r);
+    });
+    return map;
   }
+
+
+  
+async function participantesEmpatadosEnCorte() {
+  // Traer evaluaciones de la ronda base (los tres jurados)
+  const [{ data: rJ1 }, { data: rJ2 }, { data: rJ3 }] = await Promise.all([
+    supabase.from(TABLA_BASE('j1', RONDA)).select('*'),
+    supabase.from(TABLA_BASE('j2', RONDA)).select('*'),
+    supabase.from(TABLA_BASE('j3', RONDA)).select('*')
+  ]);
+
+  // Último registro por participante (cada jurado)
+  const u1 = ultimoPorParticipante(rJ1);
+  const u2 = ultimoPorParticipante(rJ2);
+  const u3 = ultimoPorParticipante(rJ3);
+
+  // Totales globales (clave normalizada)
+  const totales = new Map();
+  const setDisplayName = new Map();
+  const acum = (m) => {
+    m.forEach((row, key) => {
+      const t = (totales.get(key) || 0) + sumatoria(row);
+      totales.set(key, t);
+      if (!setDisplayName.has(key)) setDisplayName.set(key, row.participante);
+    });
+  };
+  acum(u1); acum(u2); acum(u3);
+
+  const ranking = Array.from(totales.entries())
+    .map(([k, t]) => ({ participanteKey: k, participante: setDisplayName.get(k) || k, total: t }))
+    .sort((a, b) => b.total - a.total);
+
+  if (ranking.length === 0) return [];
+
+  const cutoffIndex = Math.min(LIMITE - 1, ranking.length - 1); // 6 para R1, 2 para R2
+  const cutoffScore = ranking[cutoffIndex].total;
+
+  // Empatados en el puntaje de corte
+  const empatados = ranking.filter(r => r.total === cutoffScore).map(r => r.participante);
+
+  // Excluir ya evaluados en este desempate por este jurado
+  const { data: ya } = await supabase
+    .from(TABLA_TB(JURADO, RONDA))
+    .select('participante');
+
+  const yaSet = new Set((ya || []).map(r => norm(r.participante)));
+  return empatados.filter(p => !yaSet.has(norm(p)));
+}
+
 
   async function cargarParticipantes() {
     const empatados = await participantesEmpatadosEnCorte();
@@ -256,10 +260,9 @@
   document.getElementById('form-evaluacion').addEventListener('submit', async (e) => {
     e.preventDefault();
 
-    const juradoEff = (document.getElementById('juradoSelect')?.value || JURADO);
-    const tabla = TABLA_TB(juradoEff, RONDA);
+    const tabla = TABLA_TB(JURADO, RONDA);
     const evaluacion = {
-      jurado: juradoEff,
+      jurado: JURADO,
       ronda: String(RONDA),
       participante: document.getElementById('participante').value,
       tema: document.getElementById('tema').value,
@@ -272,12 +275,6 @@
       comentarios: document.getElementById('comentarios').value,
       creada_en: new Date().toISOString()
     };
-
-    
-    if (!['j1','j2','j3'].includes(juradoEff)) {
-      alert('Jurado inválido. Selecciona J1, J2 o J3.');
-      return;
-    }
 
     const response = await fetch('/api/evaluacion', {
       method: 'POST',
