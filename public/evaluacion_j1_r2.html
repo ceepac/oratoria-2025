@@ -142,7 +142,9 @@
     }
 
     // --- Participantes: Top 7 global de R1 (J1 + J2 + J3), excluyendo ya evaluados en j1_r2
+    
     async function cargarParticipantes() {
+      // Base: últimos registros de R1 por jurado
       const [{ data: r1j1 }, { data: r1j2 }, { data: r1j3 }] = await Promise.all([
         supabase.from('evaluacion_j1_r1').select('*'),
         supabase.from('evaluacion_j2_r1').select('*'),
@@ -153,7 +155,7 @@
       const u2 = ultimoPorParticipante(r1j2);
       const u3 = ultimoPorParticipante(r1j3);
 
-      // global por participante = suma de los 3 jurados (tomando su último registro)
+      // Totales base (R1)
       const totales = new Map();
       const agregar = (mapU) => {
         mapU.forEach((row, part) => {
@@ -163,27 +165,81 @@
       };
       agregar(u1); agregar(u2); agregar(u3);
 
-      const top7 = Array.from(totales.entries())
-        .sort((a,b)=>b[1]-a[1])
-        .slice(0,7)
-        .map(([p])=>p);
+      // Orden por puntaje descendente
+      const ordenBase = Array.from(totales.entries()).sort((a,b)=>b[1]-a[1]);
+      const cutoff = 7;
+      const puntuacionCorte = ordenBase.length ? ordenBase[Math.min(cutoff-1, ordenBase.length-1)][1] : -Infinity;
 
-      // Excluir ya evaluados en j1_r2
+      // Grupo empatado en el corte
+      const empatados = ordenBase.filter(([_, sc]) => sc === puntuacionCorte).map(([p]) => p);
+
+      let top7 = ordenBase.slice(0, cutoff).map(([p])=>p);
+
+      // Si hay empate en el corte, aplicar desempate de R1
+      if (empatados.length > 1) {
+        // Sumar desempates por participante (último registro por jurado)
+        const [{ data: d1 }, { data: d2 }, { data: d3 }] = await Promise.all([
+          supabase.from('desempate_j1_r1').select('*'),
+          supabase.from('desempate_j2_r1').select('*'),
+          supabase.from('desempate_j3_r1').select('*')
+        ]);
+
+        const ultimo = (rows) => {
+          const m = new Map();
+          (rows||[]).forEach(r=>{
+            const p=(r.participante||'').trim(); if(!p) return;
+            const prev=m.get(p);
+            const d1=prev?.creada_en?new Date(prev.creada_en):null;
+            const d2=r.creada_en?new Date(r.creada_en):null;
+            if(!prev || (d2 && (!d1 || d2>d1))) m.set(p,r);
+          });
+          return m;
+        };
+
+        const du1 = ultimo(d1), du2 = ultimo(d2), du3 = ultimo(d3);
+
+        const puntajeDes = new Map();
+        empatados.forEach(p=>{ puntajeDes.set(p, 0); });
+        const acum = (m) => {
+          m.forEach((row, p) => {
+            if (!puntajeDes.has(p)) return;
+            const s = sumatoria(row);
+            puntajeDes.set(p, (puntajeDes.get(p)||0) + s);
+          });
+        };
+        acum(du1); acum(du2); acum(du3);
+
+        // Ordenar empatados por desempate descendente; como fallback, alfabético estable
+        const ordenEmp = Array.from(puntajeDes.entries()).sort((a,b)=> (b[1]-a[1]) || a[0].localeCompare(b[0]));
+
+        // Reemplazar el último slot del top7 por el ganador de desempate
+        const ganador = ordenEmp[0]?.[0];
+        if (ganador) {
+          // Quitar del top7 cualquier empatado distinto al ganador
+          top7 = top7.filter(p => !empatados.includes(p) || p===ganador);
+          // Asegurar que ganador esté incluido
+          if (!top7.includes(ganador)) top7.push(ganador);
+        }
+      }
+
+      // Excluir ya evaluados en esta ronda/jurado
       const { data: evaluados } = await supabase
         .from('evaluacion_j1_r2')
         .select('participante');
-
       const yaEvaluados = new Set((evaluados||[]).map(r => (r.participante||'').trim()));
 
       const select = document.getElementById('participante');
       select.innerHTML = '<option value="">Selecciona un participante</option>';
-      top7.filter(p => !yaEvaluados.has((p||'').trim())).forEach(nombre => {
-        const opt = document.createElement('option');
-        opt.value = nombre;
-        opt.textContent = nombre;
-        select.appendChild(opt);
-      });
+      top7
+        .filter(p => !yaEvaluados.has((p||'').trim()))
+        .forEach(nombre => {
+          const opt = document.createElement('option');
+          opt.value = nombre;
+          opt.textContent = nombre;
+          select.appendChild(opt);
+        });
     }
+    
 
     // --- Temas: excluir el tema ya usado en R1 por ese participante (jurado 1)
     async function cargarTemas() {

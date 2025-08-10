@@ -141,7 +141,9 @@
     }
 
     // --- Participantes: Top 3 global de R2 (J1 + J2 + J3), excluyendo ya evaluados en j1_r3
+    
     async function cargarParticipantes() {
+      // Base: últimos registros de R2 por jurado
       const [{ data: r2j1 }, { data: r2j2 }, { data: r2j3 }] = await Promise.all([
         supabase.from('evaluacion_j1_r2').select('*'),
         supabase.from('evaluacion_j2_r2').select('*'),
@@ -152,6 +154,7 @@
       const u2 = ultimoPorParticipante(r2j2);
       const u3 = ultimoPorParticipante(r2j3);
 
+      // Totales base (R2)
       const totales = new Map();
       const agregar = (mapU) => {
         mapU.forEach((row, part) => {
@@ -161,26 +164,73 @@
       };
       agregar(u1); agregar(u2); agregar(u3);
 
-      const top3 = Array.from(totales.entries())
-        .sort((a,b)=>b[1]-a[1])
-        .slice(0,3)
-        .map(([p])=>p);
+      const ordenBase = Array.from(totales.entries()).sort((a,b)=>b[1]-a[1]);
+      const cutoff = 3;
+      const puntuacionCorte = ordenBase.length ? ordenBase[Math.min(cutoff-1, ordenBase.length-1)][1] : -Infinity;
+      const empatados = ordenBase.filter(([_, sc]) => sc === puntuacionCorte).map(([p]) => p);
+
+      let top3 = ordenBase.slice(0, cutoff).map(([p])=>p);
+
+      // Si hay empate en el corte, aplicar desempate de R2
+      if (empatados.length > 1) {
+        const [{ data: d1 }, { data: d2 }, { data: d3 }] = await Promise.all([
+          supabase.from('desempate_j1_r2').select('*'),
+          supabase.from('desempate_j2_r2').select('*'),
+          supabase.from('desempate_j3_r2').select('*')
+        ]);
+
+        const ultimo = (rows) => {
+          const m = new Map();
+          (rows||[]).forEach(r=>{
+            const p=(r.participante||'').trim(); if(!p) return;
+            const prev=m.get(p);
+            const d1=prev?.creada_en?new Date(prev.creada_en):null;
+            const d2=r.creada_en?new Date(r.creada_en):null;
+            if(!prev || (d2 && (!d1 || d2>d1))) m.set(p,r);
+          });
+          return m;
+        };
+
+        const du1 = ultimo(d1), du2 = ultimo(d2), du3 = ultimo(d3);
+
+        const puntajeDes = new Map();
+        empatados.forEach(p=>{ puntajeDes.set(p, 0); });
+        const acum = (m) => {
+          m.forEach((row, p) => {
+            if (!puntajeDes.has(p)) return;
+            const s = sumatoria(row);
+            puntajeDes.set(p, (puntajeDes.get(p)||0) + s);
+          });
+        };
+        acum(du1); acum(du2); acum(du3);
+
+        const ordenEmp = Array.from(puntajeDes.entries()).sort((a,b)=> (b[1]-a[1]) || a[0].localeCompare(b[0]));
+        const ganador = ordenEmp[0]?.[0];
+        if (ganador) {
+          top3 = top3.filter(p => !empatados.includes(p) || p===ganador);
+          if (!top3.includes(ganador)) top3.push(ganador);
+          // Asegurar tamaño exacto cutoff
+          if (top3.length > cutoff) top3 = top3.slice(0, cutoff);
+        }
+      }
 
       const { data: evaluados } = await supabase
         .from('evaluacion_j3_r3')
         .select('participante');
-
       const yaEvaluados = new Set((evaluados||[]).map(r => (r.participante||'').trim()));
 
       const select = document.getElementById('participante');
       select.innerHTML = '<option value="">Selecciona un participante</option>';
-      top3.filter(p => !yaEvaluados.has((p||'').trim())).forEach(nombre => {
-        const opt = document.createElement('option');
-        opt.value = nombre;
-        opt.textContent = nombre;
-        select.appendChild(opt);
-      });
+      top3
+        .filter(p => !yaEvaluados.has((p||'').trim()))
+        .forEach(nombre => {
+          const opt = document.createElement('option');
+          opt.value = nombre;
+          opt.textContent = nombre;
+          select.appendChild(opt);
+        });
     }
+    
 
     // --- Temas: excluir los usados en j1_r1 y j1_r2 por el participante seleccionado
     async function cargarTemas() {
