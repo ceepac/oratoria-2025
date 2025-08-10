@@ -1,12 +1,8 @@
-// server.js — ESM listo para Render
+// server.js — ESM listo para Render (sin dotenv)
 import express from "express";
 import path from "path";
 import { fileURLToPath } from "url";
-import dotenv from "dotenv";
 import { createClient } from "@supabase/supabase-js";
-
-// Cargar variables de entorno
-dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -14,7 +10,7 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// === Supabase (usa SERVICE_ROLE si está; si no, cae a SUPABASE_KEY) ===
+// === Supabase ===
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY =
   process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_KEY;
@@ -26,20 +22,20 @@ if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-// === Middlewares ===
+// Middlewares
 app.use(express.json({ limit: "1mb" }));
 app.use(express.urlencoded({ extended: true }));
 
-// Servir estáticos (public) y que el index sea admin_resultados.html
+// Servir estáticos
 const pathPublic = path.join(__dirname, "public");
 app.use(express.static(pathPublic, { index: "admin_resultados.html" }));
 
-// Ruta raíz (opcional, por si alguien entra a "/")
+// Home
 app.get("/", (_req, res) => {
   res.sendFile(path.join(pathPublic, "admin_resultados.html"));
 });
 
-// === API auxiliares (opcionales) ===
+// Aux: participantes
 app.get("/api/participantes", async (_req, res) => {
   try {
     const { data, error } = await supabase
@@ -75,7 +71,7 @@ app.get("/api/participante", async (req, res) => {
   }
 });
 
-// === API principal: guardar evaluación ===
+// Guardar evaluación
 const TABLAS_PERMITIDAS = new Set([
   "evaluacion_j1_r1","evaluacion_j1_r2","evaluacion_j1_r3",
   "evaluacion_j2_r1","evaluacion_j2_r2","evaluacion_j2_r3",
@@ -112,9 +108,7 @@ app.post("/api/evaluacion", async (req, res) => {
   }
 });
 
-// Fallback: cualquier ruta devuelve el admin (útil para abrir directo)
-/* Si prefieres que otras páginas se sirvan por su ruta exacta, puedes
-   eliminar este fallback. */
+// Fallback
 app.get("*", (_req, res) => {
   res.sendFile(path.join(pathPublic, "admin_resultados.html"));
 });
