@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Jurado 1 | Concurso de Oratoria 2025</title>
+  <link rel="icon" href="img/favicon.ico" type="image/x-icon" />
+  <link rel="stylesheet" href="css/estilos.css" />
+</head>
+<body>
+  <header>
+    <img src="img/CEEPAC.png" alt="Logo CEEPAC" class="logo">
+    <img src="img/Recurso 1.png" alt="Logo Concurso" class="logo">
+  </header>
+
+  <main class="container">
+    <h1>Bienvenida Mtra. Elizabeth Trujillo Facundo</h1>
+    <p>Selecciona la ronda en la que deseas calificar.</p>
+
+    <div class="botones-jurados">
+      <a href="/evaluacion_j1_r1.html" class="boton-principal">Primera Ronda</a>
+      <a href="/evaluacion_j1_r2.html" class="boton-principal">Segunda Ronda</a>
+      <a href="/evaluacion_j1_r3.html" class="boton-principal">Tercera Ronda</a>
+    </div>
+
+    <div id="btn-desempate-container" style="margin-top: 20px; display: none;">
+      <a href="evaluacion_j1_desempate.html">
+    <button>Ir a Evaluación de Desempate</button>
+  </a>
+</div>
+
+
+    <a href="/menu_principal.html" class="boton-secundario">Volver al menú principal</a>
+  </main>
+
+  <footer>
+    <p>© 2025 CEEPAC. MSK // Todos los derechos reservados.</p>
+  </footer>
+  
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+<script>
+  const SUPABASE_URL = "https://vubsxsvjshequdumytgb.supabase.co";
+  const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ1YnN4c3Zqc2hlcXVkdW15dGdiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDg1NDg4MDMsImV4cCI6MjA2NDEyNDgwM30.AzVLxxVw9PD-hsCd31vc9ZAsjsNHx-JxemAMCk20QLA";
+  const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  async function mostrarBotonDesempate() {
+    const { data, error } = await supabase
+      .from('desempate_j1')
+      .select('*');
+
+    if (error) {
+      console.error("Error al verificar desempate:", error);
+      return;
+    }
+
+    if (data && data.length > 0) {
+      document.getElementById("btn-desempate-container").style.display = "block";
+    }
+  }
+
+  document.addEventListener("DOMContentLoaded", mostrarBotonDesempate);
+</script>
+
+</body>
+</html>
+

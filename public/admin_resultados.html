@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Evaluaciones Globales</title>
+  <link rel="icon" href="img/favicon.ico" type="image/x-icon"/>
+  <link rel="stylesheet" href="css/estilos.css"/>
+  <script defer src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
+  <style>
+    /* ====== Layout general ====== */
+    main.container { max-width: 1200px; margin: 0 auto; }
+    h1 { margin-bottom: 6px; }
+
+    .toolbar {
+      display:flex; gap:12px; align-items:center; justify-content:space-between; flex-wrap:wrap;
+      margin:12px 0 16px; padding:10px 12px; background:#f8fafc; border:1px solid #e5e7eb; border-radius:10px;
+    }
+    .toolbar .lado-izq, .toolbar .lado-der { display:inline-flex; align-items:center; gap:8px; flex-wrap:wrap; }
+    .form-group { display:inline-flex; align-items:center; gap:6px; }
+    select#rondaSelect, input#nombreConcurso {
+      padding:6px 8px; height:34px; font-size:14px; border-radius:8px; border:1px solid #cbd5e1; background:#fff;
+    }
+    input#nombreConcurso { min-width: 280px; }
+
+    .btn {
+      display:inline-flex; align-items:center; gap:6px; padding:6px 10px; height:34px;
+      border:1px solid transparent; border-radius:8px; font-weight:600; font-size:14px; cursor:pointer;
+      box-shadow:0 1px 0 rgba(0,0,0,.04); background:#fff; color:#0f172a;
+    }
+    .btn:active { transform: translateY(1px); }
+    .btn-primary { background:#1d4ed8; color:#fff; }
+    .btn-secondary { background:#0891b2; color:#fff; }
+    .btn-ghost { background:#eef2f7; color:#0f172a; border-color:#e2e8f0; }
+    .btn[disabled] { opacity:.6; cursor:not-allowed; }
+
+    .tabla-wrap { overflow:auto; border:1px solid #e2e8f0; border-radius:12px; }
+    .tabla-resultados { width:100%; border-collapse:collapse; }
+    .tabla-resultados th, .tabla-resultados td {
+      border-bottom:1px solid #e2e8f0; padding:8px 10px; text-align:left; vertical-align:top; font-size:14px;
+    }
+    .tabla-resultados thead th { background:#f8fafc; position:sticky; top:0; z-index:1; }
+    #contenedor-tablas h3 { margin:14px 0 8px; }
+
+    /* ====== PDF compacto ====== */
+    @media print { header, .toolbar { display:none !important; } }
+    @page { size: A4 landscape; margin: 10mm; }
+
+    .pdf-header {
+      display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:6px;
+      border-bottom:1px solid #e5e7eb; padding-bottom:6px;
+    }
+    .pdf-header img { height:34px; object-fit:contain; }
+    .pdf-header .meta { text-align:center; flex: 1; }
+    .pdf-header .meta h2 { margin:0; font-size:16px; letter-spacing:.2px; }
+    .pdf-header .meta .fecha { font-size:11px; color:#334155; margin-top:2px; }
+    .pdf-submeta { text-align:center; font-size:11px; margin:6px 0 8px; color:#334155; }
+
+    .pdf-table { width:100%; border-collapse:collapse; font-size:11px; }
+    .pdf-table th { background:#f3f4f6; color:#0f172a; border:1px solid #d1d5db; padding:6px; text-align:left; }
+    .pdf-table td { border:1px solid #e5e7eb; padding:6px; vertical-align:top; }
+    .pdf-table tbody tr:nth-child(odd){ background:#fafafa; }
+    .pdf-chunk-title { margin: 8px 0 6px; font-size: 13px; color:#0f172a; }
+
+    /* ====== Finalistas (podio) ====== */
+    .finalistas-title { margin:10px 0 6px; font-size:15px; font-weight:700; color:#0f172a; text-align:center; }
+    .podio {
+      display:grid; grid-template-columns: 1fr 1fr 1fr; gap:10px; margin:8px 0 10px;
+    }
+    .podio-card {
+      display:flex; flex-direction:column; align-items:center; justify-content:center;
+      border-radius:10px; padding:10px; min-height:88px; border:1px solid #e5e7eb;
+      background:#fff;
+    }
+    .podio-card .puesto { font-size:12px; margin-bottom:2px; }
+    .podio-card .nombre { font-weight:700; font-size:13px; text-align:center; }
+    .podio-card .puntaje { font-size:12px; margin-top:2px; }
+
+    .gold   { background: linear-gradient(180deg, #fff7cc, #ffe680); border-color:#e8ca55; }
+    .silver { background: linear-gradient(180deg, #f7f7f9, #e9e9f2); border-color:#cfd3da; }
+    .bronze { background: linear-gradient(180deg, #ffe8d6, #ffd0a8); border-color:#e2b082; }
+
+    .pdf-table.finalistas th { background:#eef2ff; }
+    .pdf-table.finalistas td strong { font-size:12px; }
+
+    .firmas {
+      display:grid; grid-template-columns: repeat(3, 1fr); gap:14px; margin-top:12px;
+    }
+    .firma-slot {
+      display:flex; flex-direction:column; align-items:center; justify-content:flex-end;
+      min-height:110px; padding:6px 10px; border:1px dashed #cbd5e1; border-radius:8px; background:#fcfcfd;
+    }
+    .firma-linea { width:100%; border-top:2px solid #111827; height:2px; margin:40px 0 8px; }
+    .firma-etiqueta { font-size:10px; letter-spacing:.3px; color:#475569; margin-bottom:2px; }
+    .firma-nombre { font-size:12px; font-weight:600; text-align:center; color:#0f172a; }
+  </style>
+</head>
+<body>
+  <header>
+    <img src="img/CEEPAC.png" alt="Logo CEEPAC" class="logo">
+    <img src="img/Recurso 1.png" alt="Logo Concurso" class="logo">
+  </header>
+
+  <main class="container">
+    <h1>Administrador de Resultados</h1>
+
+    <section class="toolbar">
+      <div class="lado-izq">
+        <div class="form-group">
+          <label for="nombreConcurso"><strong>Concurso:</strong></label>
+          <input id="nombreConcurso" type="text" value="Concurso de Oratoria CEEPAC 2025"/>
+        </div>
+        <div class="form-group">
+          <label for="rondaSelect"><strong>Ronda:</strong></label>
+          <select id="rondaSelect">
+            <option value="">-- Selecciona ronda --</option>
+            <option value="1">Ronda 1</option>
+            <option value="2">Ronda 2</option>
+            <option value="3">Ronda 3</option>
+          </select>
+        </div>
+        <button id="btn-global"  class="btn btn-ghost">Ver globales</button>
+        <button id="btn-ocultar" class="btn btn-ghost" style="display:none;">Ocultar</button>
+      </div>
+
+      <div class="lado-der">
+        <button id="btn-export-csv" class="btn btn-secondary">Exportar Excel (CSV)</button>
+        <button id="btn-export-pdf" class="btn btn-primary">Exportar PDF</button>
+      </div>
+    </section>
+
+    <!-- Vista de una sola ronda (visual) -->
+    <section id="seccion-ronda" style="display:none;">
+      <h2 id="titulo-ronda">Resultados por Ronda</h2>
+      <div class="tabla-wrap">
+        <table class="tabla-resultados" id="tabla-ronda">
+          <thead><tr>
+            <th>#</th><th>Participante</th><th>Tema(s)</th>
+            <th>Jurado 1</th><th>Jurado 2</th><th>Jurado 3</th>
+            <th>Total</th><th>Comentarios</th><th>Ronda</th><th>Fecha</th>
+          </tr></thead>
+          <tbody id="tbody-ronda"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Vista global (visual) -->
+    <section id="seccion-globales" style="display:none;">
+      <h2>Evaluaciones Globales (R1, R2, R3)</h2>
+      <div id="contenedor-tablas"></div>
+    </section>
+
+    <!-- Contenedor oculto para construir el PDF -->
+    <div id="pdf-root" style="position:fixed; left:-99999px; top:-99999px;"></div>
+  </main>
+
+  <footer>
+    <p>© 2025 CEEPAC. MSK // Todos los derechos reservados.</p>
+  </footer>
+
+  <script type="module">
+    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
+    const supabase = createClient(
+      'https://idvgzyyvgdbiwzgndxtk.supabase.co',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imlkdmd6eXl2Z2RiaXd6Z25keHRrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQzMTc0MjIsImV4cCI6MjA2OTg5MzQyMn0.a8YA2MYTG0KVxu5qLe8pmia3s0lzod-R19W81VSsb7o'
+    );
+
+    /* Jurados */
+    const JURADOS = [
+      'Mtra. Elizabeth Trujillo Facundo',
+      'Lcda. Mariela Gutiérrez Montoya',
+      'Lic. Mariano Agustín Olguín Huerta'
+    ];
+
+    /* Logos (opcional, se intentan cargar; si no existen, se omiten) */
+    const USER_LOGO_LEFT  = "img/CEEPAC.png";
+    const USER_LOGO_RIGHT = "img/Recurso 1.png";
+
+    /* Utilidades */
+    const sumatoria = (r) =>
+      (r?.presentacion||0) + (r?.dominio_tema||0) + (r?.dominio_auditorio||0) +
+      (r?.diccion||0) + (r?.claridad_mensaje||0) + (r?.conclusion||0);
+
+    function mapToFilasOrdenadas(porParticipante) {
+      return Array.from(porParticipante.values())
+        .map(r => ({
+          ...r,
+          tema: Array.from(r.temaSet).join(' | ') || '-',
+          comentarios: r.comentarios.join(' | '),
+          total: (r.jurado1||0) + (r.jurado2||0) + (r.jurado3||0)
+        }))
+        .sort((a,b) => b.total - a.total);
+    }
+
+    async function fetchRondaAgrupada(ronda) {
+      const jurados = ['j1', 'j2', 'j3'];
+      const porParticipante = new Map();
+
+      const ultimoPorParticipante = (rows) => {
+        const map = new Map();
+        (rows || []).forEach(r => {
+          const p = (r.participante || '').trim();
+          if (!p) return;
+          const prev = map.get(p);
+          if (!prev) { map.set(p, r); return; }
+          const d1 = prev.creada_en ? new Date(prev.creada_en) : null;
+          const d2 = r.creada_en ? new Date(r.creada_en) : null;
+          if (!d1 || (d2 && d2 > d1)) map.set(p, r);
+        });
+        return map;
+      };
+
+      const lotes = await Promise.all(
+        jurados.map(j => supabase.from(`evaluacion_${j}_r${ronda}`).select('*'))
+      );
+
+      lotes.forEach((res, idxJ) => {
+        const colJ = `jurado${idxJ + 1}`;
+        const ultimos = ultimoPorParticipante(res.data || []);
+        ultimos.forEach(row => {
+          const p = (row.participante || '').trim();
+          if (!p) return;
+          if (!porParticipante.has(p)) {
+            porParticipante.set(p, {
+              participante: p, temaSet: new Set(),
+              jurado1: 0, jurado2: 0, jurado3: 0,
+              comentarios: [], ronda: row.ronda || ronda,
+              fechaMax: row.creada_en || null
+            });
+          }
+          const obj = porParticipante.get(p);
+          obj[colJ] = sumatoria(row);
+          if (row.tema) obj.temaSet.add(row.tema);
+          if (row.comentarios) obj.comentarios.push(row.comentarios);
+          if (row.creada_en && (!obj.fechaMax || new Date(row.creada_en) > new Date(obj.fechaMax))) {
+            obj.fechaMax = row.creada_en;
+          }
+        });
+      });
+
+      return mapToFilasOrdenadas(porParticipante);
+    }
+
+    function renderTbodyFilas(tbody, filas) {
+      tbody.innerHTML = '';
+      filas.forEach((row, i) => {
+        const medal = i===0?'🥇':i===1?'🥈':i===2?'🥉':(i+1);
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${medal}</td>
+          <td>${row.participante}</td>
+          <td>${row.tema}</td>
+          <td>${row.jurado1}</td>
+          <td>${row.jurado2}</td>
+          <td>${row.jurado3}</td>
+          <td><strong>${row.total}</strong></td>
+          <td>${row.comentarios || ''}</td>
+          <td>${row.ronda}</td>
+          <td>${row.fechaMax ? new Date(row.fechaMax).toLocaleString() : '-'}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    /* DOM */
+    const nombreConcursoInput = document.getElementById('nombreConcurso');
+    const rondaSelect   = document.getElementById('rondaSelect');
+    const seccionRonda  = document.getElementById('seccion-ronda');
+    const tituloRonda   = document.getElementById('titulo-ronda');
+    const tbodyRonda    = document.getElementById('tbody-ronda');
+    const seccionGlobal = document.getElementById('seccion-globales');
+    const contenedor    = document.getElementById('contenedor-tablas');
+    const btnGlobal     = document.getElementById('btn-global');
+    const btnOcultar    = document.getElementById('btn-ocultar');
+    const btnExportCSV  = document.getElementById('btn-export-csv');
+    const btnExportPDF  = document.getElementById('btn-export-pdf');
+
+    /* Visual: ver una ronda */
+    rondaSelect.addEventListener('change', async () => {
+      const ronda = rondaSelect.value;
+      if (!ronda) { seccionRonda.style.display = 'none'; return; }
+      const filas = await fetchRondaAgrupada(ronda);
+      tituloRonda.textContent = (ronda==='3') ? 'Finalistas (Ronda 3)' : `Resultados por Ronda ${ronda}`;
+      seccionRonda.style.display = 'block';
+      seccionGlobal.style.display = 'none';
+      btnOcultar.style.display = 'inline-flex';
+      renderTbodyFilas(tbodyRonda, filas);
+    });
+
+    /* Visual: ver globales */
+    btnGlobal.addEventListener('click', async () => {
+      seccionRonda.style.display = 'none';
+      seccionGlobal.style.display = 'block';
+      btnOcultar.style.display = 'inline-flex';
+      contenedor.innerHTML = '';
+
+      for (const ronda of [1,2,3]) {
+        const filas = await fetchRondaAgrupada(ronda);
+
+        const titulo = document.createElement('h3');
+        titulo.textContent = (ronda===3) ? 'Finalistas (Ronda 3)' : `Ronda ${ronda}`;
+        contenedor.appendChild(titulo);
+
+        const wrap = document.createElement('div'); wrap.className='tabla-wrap';
+        const tabla = document.createElement('table'); tabla.className = 'tabla-resultados';
+        tabla.innerHTML = `
+          <thead><tr>
+            <th>#</th><th>Participante</th><th>Tema(s)</th>
+            <th>Jurado 1</th><th>Jurado 2</th><th>Jurado 3</th>
+            <th>Total</th><th>Comentarios</th><th>Ronda</th><th>Fecha</th>
+          </tr></thead><tbody></tbody>`;
+        const tbody = tabla.querySelector('tbody');
+
+        // Medallas en vista global también
+        filas.forEach((row, i) => {
+          const medal = (ronda===3 && i<3) ? (i===0?'🥇':i===1?'🥈':'🥉') : (i+1);
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>${medal}</td>
+            <td>${row.participante}</td>
+            <td>${row.tema}</td>
+            <td>${row.jurado1}</td>
+            <td>${row.jurado2}</td>
+            <td>${row.jurado3}</td>
+            <td><strong>${row.total}</strong></td>
+            <td>${row.comentarios || ''}</td>
+            <td>${row.ronda}</td>
+            <td>${row.fechaMax ? new Date(row.fechaMax).toLocaleString() : '-'}</td>
+          `;
+          tbody.appendChild(tr);
+        });
+
+        wrap.appendChild(tabla);
+        contenedor.appendChild(wrap);
+      }
+    });
+
+    btnOcultar.addEventListener('click', () => {
+      seccionRonda.style.display = 'none';
+      seccionGlobal.style.display = 'none';
+      btnOcultar.style.display = 'none';
+    });
+
+    /* CSV (todas) */
+    function sanitizeCSV(v){ if(v==null) return ''; const s=String(v); return /[",\n]/.test(s)?`"${s.replace(/"/g,'""')}"`:s; }
+    function filasToCSV(filas, titulo=''){
+      const head=['#','Participante','Tema(s)','Jurado 1','Jurado 2','Jurado 3','Total','Comentarios','Ronda','Fecha'];
+      const rows=[]; if(titulo) rows.push(titulo); rows.push(head.map(sanitizeCSV).join(','));
+      filas.forEach((row,i)=>rows.push([
+        i+1,row.participante,row.tema,row.jurado1,row.jurado2,row.jurado3,row.total,row.comentarios||'',row.ronda,row.fechaMax?new Date(row.fechaMax).toLocaleString():'-'
+      ].map(sanitizeCSV).join(',')));
+      return rows.join('\n');
+    }
+    function downloadCSV(filename, csv){
+      const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'}); const url=URL.createObjectURL(blob);
+      const a=document.createElement('a'); a.href=url; a.download=filename; document.body.appendChild(a); a.click();
+      document.body.removeChild(a); URL.revokeObjectURL(url);
+    }
+    btnExportCSV.addEventListener('click', async ()=>{
+      btnExportCSV.disabled=true;
+      const ahora=new Date().toISOString().slice(0,19).replace(/[:T]/g,'-');
+      const concurso=nombreConcursoInput.value.trim()||'Concurso';
+      const juradosTxt=JURADOS.join(' | ');
+      const [f1,f2,f3]=await Promise.all([fetchRondaAgrupada(1),fetchRondaAgrupada(2),fetchRondaAgrupada(3)]);
+      const encabezado=[
+        `Concurso:,${sanitizeCSV(concurso)}`,
+        `Jurados:,${sanitizeCSV(juradosTxt)}`,
+        `Fecha:,${sanitizeCSV(new Date().toLocaleString())}`,
+        ''
+      ].join('\n');
+      const csv=[encabezado,filasToCSV(f1,'Ronda 1'),'',
+                 filasToCSV(f2,'Ronda 2'),'',
+                 filasToCSV(f3,'Ronda 3 (Finalistas)')].join('\n');
+      downloadCSV(`${concurso.replace(/\s+/g,'_').toLowerCase()}_evaluaciones_globales_${ahora}.csv`, csv);
+      btnExportCSV.disabled=false;
+    });
+
+    /* ===== PDF (todas) ===== */
+    async function toDataURL(url){
+      try{
+        const res=await fetch(url,{mode:'cors'}); if(!res.ok) throw new Error('fetch fail');
+        const blob=await res.blob();
+        return await new Promise((resolve)=>{ const r=new FileReader(); r.onload=()=>resolve(r.result); r.readAsDataURL(blob); });
+      }catch(e){ console.warn('Logo no disponible (se omitirá):', url); return null; }
+    }
+
+    function makeTableHTML(rows, extraClass=''){
+      return `
+        <table class="pdf-table ${extraClass}">
+          <thead><tr>
+            <th>#</th><th>Participante</th><th>Tema(s)</th>
+            <th>Jurado 1</th><th>Jurado 2</th><th>Jurado 3</th>
+            <th>Total</th><th>Comentarios</th><th>Ronda</th><th>Fecha</th>
+          </tr></thead>
+          <tbody>
+            ${rows.map((row)=>`
+              <tr>
+                <td>${row.medal || row.idx}</td>
+                <td>${row.participante}</td>
+                <td>${row.tema}</td>
+                <td>${row.jurado1}</td>
+                <td>${row.jurado2}</td>
+                <td>${row.jurado3}</td>
+                <td><strong>${row.total}</strong></td>
+                <td>${row.comentarios||''}</td>
+                <td>${row.ronda}</td>
+                <td>${row.fechaMax?new Date(row.fechaMax).toLocaleString():'-'}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>`;
+    }
+
+    function buildPDFContainer(bloques, concurso, jurados, logos){
+      const cont=document.createElement('div');
+
+      // Header
+      const header=document.createElement('div'); header.className='pdf-header';
+      header.innerHTML=`
+        ${logos.left?`<img src="${logos.left}" alt="Logo izquierdo">`:''}
+        <div class="meta"><h2>${concurso}</h2><div class="fecha">${new Date().toLocaleString()}</div></div>
+        ${logos.right?`<img src="${logos.right}" alt="Logo derecho">`:''}
+      `;
+      cont.appendChild(header);
+
+      const sub=document.createElement('div'); sub.className='pdf-submeta';
+      sub.textContent=`Jurados: ${jurados.join(' • ')}`;
+      cont.appendChild(sub);
+
+      bloques.forEach((b, rondaIdx)=>{
+        // Numerar filas
+        let filasEnumeradas = b.filas.map((r,i)=>({ idx: i+1, ...r }));
+
+        if (b.ronda === 1) {
+          // R1 en 2 tablas: 10 y el resto
+          const firstTen = filasEnumeradas.slice(0, 10);
+          const rest = filasEnumeradas.slice(10);
+
+          const titulo1=document.createElement('div');
+          titulo1.className='pdf-chunk-title';
+          titulo1.textContent = rest.length ? `Ronda 1 (Parte 1/2)` : `Ronda 1`;
+          cont.appendChild(titulo1);
+          const wrap1=document.createElement('div');
+          wrap1.innerHTML = makeTableHTML(firstTen);
+          cont.appendChild(wrap1);
+
+          if (rest.length) {
+            const br1 = document.createElement('div');
+            br1.style.pageBreakAfter = 'always';
+            cont.appendChild(br1);
+
+            const titulo2=document.createElement('div');
+            titulo2.className='pdf-chunk-title';
+            titulo2.textContent = `Ronda 1 (Parte 2/2)`;
+            cont.appendChild(titulo2);
+            const wrap2=document.createElement('div');
+            wrap2.innerHTML = makeTableHTML(rest);
+            cont.appendChild(wrap2);
+          }
+
+        } else if (b.ronda === 3) {
+          // FINALISTAS
+          const tituloF=document.createElement('div');
+          tituloF.className='finalistas-title';
+          tituloF.textContent='Finalistas (Ronda 3)';
+          cont.appendChild(tituloF);
+
+          // Podio (los tres primeros)
+          const top3 = filasEnumeradas.slice(0,3);
+          const podio=document.createElement('div');
+          podio.className='podio';
+          const silver = top3[1];
+          const gold   = top3[0];
+          const bronze = top3[2];
+          podio.innerHTML = `
+            <div class="podio-card silver">
+              <div class="puesto">🥈 2º Lugar</div>
+              <div class="nombre">${silver ? silver.participante : '-'}</div>
+              <div class="puntaje">${silver ? (silver.total+' pts') : ''}</div>
+            </div>
+            <div class="podio-card gold">
+              <div class="puesto">🥇 1º Lugar</div>
+              <div class="nombre">${gold ? gold.participante : '-'}</div>
+              <div class="puntaje">${gold ? (gold.total+' pts') : ''}</div>
+            </div>
+            <div class="podio-card bronze">
+              <div class="puesto">🥉 3º Lugar</div>
+              <div class="nombre">${bronze ? bronze.participante : '-'}</div>
+              <div class="puntaje">${bronze ? (bronze.total+' pts') : ''}</div>
+            </div>
+          `;
+          cont.appendChild(podio);
+
+          // Medallas en la columna "#"
+          filasEnumeradas = filasEnumeradas.map((r,i)=>({
+            ...r,
+            medal: i===0?'🥇':i===1?'🥈':i===2?'🥉':r.idx
+          }));
+
+          const wrapF=document.createElement('div');
+          wrapF.innerHTML = makeTableHTML(filasEnumeradas, 'finalistas');
+          cont.appendChild(wrapF);
+
+        } else {
+          // R2 normal
+          const titulo=document.createElement('div');
+          titulo.className='pdf-chunk-title';
+          titulo.textContent = `Ronda ${b.ronda}`;
+          cont.appendChild(titulo);
+          const wrap=document.createElement('div');
+          wrap.innerHTML = makeTableHTML(filasEnumeradas);
+          cont.appendChild(wrap);
+        }
+
+        // Firmas al final de cada ronda
+        const firmas=document.createElement('div'); firmas.className='firmas';
+        firmas.innerHTML=jurados.map(n=>`
+          <div class="firma-slot">
+            <div class="firma-linea"></div>
+            <div class="firma-etiqueta">Firma</div>
+            <div class="firma-nombre">${n}</div>
+          </div>
+        `).join('');
+        cont.appendChild(firmas);
+
+        // Salto de página entre rondas
+        if (rondaIdx < bloques.length - 1) {
+          const br=document.createElement('div'); br.style.pageBreakAfter='always'; cont.appendChild(br);
+        }
+      });
+
+      return cont;
+    }
+
+    btnExportPDF.addEventListener('click', async ()=>{
+      btnExportPDF.disabled=true;
+      const h2p=window.html2pdf;
+      if(!h2p){ alert('No se pudo cargar el generador de PDF. Revisa tu conexión.'); btnExportPDF.disabled=false; return; }
+
+      const ahora=new Date().toISOString().slice(0,19).replace(/[:T]/g,'-');
+      const concurso=nombreConcursoInput.value.trim()||'Concurso';
+
+      // Datos
+      const [f1,f2,f3]=await Promise.all([fetchRondaAgrupada(1),fetchRondaAgrupada(2),fetchRondaAgrupada(3)]);
+
+      // Logos -> dataURL (si falla, se omiten)
+      async function safeDataURL(path){ try{ const res=await fetch(path,{mode:'cors'}); if(!res.ok) throw 0; const b=await res.blob(); return await new Promise(r=>{ const fr=new FileReader(); fr.onload=()=>r(fr.result); fr.readAsDataURL(b); }); } catch{return null;} }
+      const [logoLeft, logoRight] = await Promise.all([ safeDataURL(USER_LOGO_LEFT), safeDataURL(USER_LOGO_RIGHT) ]);
+
+      // Contenido PDF
+      const pdfRoot=document.getElementById('pdf-root'); pdfRoot.innerHTML='';
+      const cont=buildPDFContainer(
+        [{ronda:1,filas:f1},{ronda:2,filas:f2},{ronda:3,filas:f3}],
+        concurso, JURADOS, { left: logoLeft, right: logoRight }
+      );
+      pdfRoot.appendChild(cont);
+
+      const opt={
+        margin:[8,8,8,8],
+        filename:`${concurso.replace(/\s+/g,'_').toLowerCase()}_evaluaciones_globales_${ahora}.pdf`,
+        image:{type:'jpeg',quality:0.98},
+        html2canvas:{scale:2, useCORS:true, allowTaint:true, scrollY:0},
+        jsPDF:{unit:'mm', format:'a4', orientation:'landscape'},
+        pagebreak:{mode:['css','legacy']}
+      };
+
+      try{ await h2p().from(cont).set(opt).save(); }
+      catch(e){ console.error(e); alert('No fue posible generar el PDF. Intenta nuevamente.'); }
+      finally{ btnExportPDF.disabled=false; }
+    });
+  </script>
+</body>
+</html>

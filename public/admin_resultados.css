@@ -1,0 +1,98 @@
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background-color: #f4f4f4;
+  margin: 0;
+  padding: 20px;
+  color: #333;
+}
+
+h1, h2, h3 {
+  text-align: center;
+  margin-bottom: 10px;
+  color: #222;
+}
+
+select, button {
+  padding: 8px 12px;
+  margin: 10px;
+  font-size: 16px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+button {
+  background-color: #0d6efd;
+  color: white;
+  cursor: pointer;
+  transition: background 0.3s ease;
+}
+
+button:hover {
+  background-color: #084298;
+}
+
+#tabla-resultados, .tabla-resultados {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 20px;
+  margin-bottom: 40px;
+  background-color: white;
+  box-shadow: 0 0 8px rgba(0, 0, 0, 0.1);
+}
+
+#tabla-resultados th, #tabla-resultados td,
+.tabla-resultados th, .tabla-resultados td {
+  border: 1px solid #ccc;
+  padding: 8px;
+  text-align: center;
+  font-size: 14px;
+}
+
+#tabla-resultados thead,
+.tabla-resultados thead {
+  background-color: #eee;
+  font-weight: bold;
+}
+
+.resaltado {
+  background-color: #d4edda !important; /* Verde claro */
+}
+
+.resaltado-oro {
+  background-color: gold !important;
+  font-weight: bold;
+}
+
+.resaltado-plata {
+  background-color: silver !important;
+  font-weight: bold;
+}
+
+.resaltado-bronce {
+  background-color: #cd7f32 !important;
+  font-weight: bold;
+}
+
+#seccion-globales {
+  display: none;
+  margin-top: 40px;
+}
+
+@media print {
+  button, select {
+    display: none !important;
+  }
+
+  body {
+    background-color: white;
+    color: black;
+  }
+
+  .tabla-resultados {
+    page-break-inside: avoid;
+  }
+
+  h1, h2, h3 {
+    color: black !important;
+  }
+}
