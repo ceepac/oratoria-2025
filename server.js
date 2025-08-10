@@ -8,7 +8,8 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+// Usa el puerto que Render inyecta; si no, 10000
+const PORT = process.env.PORT || 10000;
 
 // === Supabase ===
 const SUPABASE_URL = process.env.SUPABASE_URL;
@@ -34,6 +35,18 @@ app.use(express.static(pathPublic, { index: "inicio.html" }));
 app.get("/", (_req, res) => {
   res.sendFile(path.join(pathPublic, "inicio.html"));
 });
+
+// ======= ÚNICA declaración (evaluaciones + desempates) =======
+const TABLAS_PERMITIDAS = new Set([
+  // Evaluaciones normales
+  "evaluacion_j1_r1","evaluacion_j1_r2","evaluacion_j1_r3",
+  "evaluacion_j2_r1","evaluacion_j2_r2","evaluacion_j2_r3",
+  "evaluacion_j3_r1","evaluacion_j3_r2","evaluacion_j3_r3",
+  // Desempates
+  "desempate_j1_r1","desempate_j2_r1","desempate_j3_r1",
+  "desempate_j1_r2","desempate_j2_r2","desempate_j3_r2"
+]);
+// =============================================================
 
 // Aux: participantes
 app.get("/api/participantes", async (_req, res) => {
@@ -71,13 +84,7 @@ app.get("/api/participante", async (req, res) => {
   }
 });
 
-// Guardar evaluación
-const TABLAS_PERMITIDAS = new Set([
-  "evaluacion_j1_r1","evaluacion_j1_r2","evaluacion_j1_r3",
-  "evaluacion_j2_r1","evaluacion_j2_r2","evaluacion_j2_r3",
-  "evaluacion_j3_r1","evaluacion_j3_r2","evaluacion_j3_r3"
-]);
-
+// Guardar evaluación (evaluaciones y desempates)
 app.post("/api/evaluacion", async (req, res) => {
   try {
     const { tabla, jurado, ronda, ...resto } = req.body || {};
@@ -108,7 +115,7 @@ app.post("/api/evaluacion", async (req, res) => {
   }
 });
 
-// Fallback
+// Fallback (por si alguien teclea otra ruta)
 app.get("*", (_req, res) => {
   res.sendFile(path.join(pathPublic, "inicio.html"));
 });
@@ -116,15 +123,3 @@ app.get("*", (_req, res) => {
 app.listen(PORT, () => {
   console.log(`✅ Servidor corriendo en http://localhost:${PORT}`);
 });
-
-// 👇 Deja UNA sola definición así:
-const TABLAS_PERMITIDAS = new Set([
-  // Evaluaciones normales
-  "evaluacion_j1_r1","evaluacion_j1_r2","evaluacion_j1_r3",
-  "evaluacion_j2_r1","evaluacion_j2_r2","evaluacion_j2_r3",
-  "evaluacion_j3_r1","evaluacion_j3_r2","evaluacion_j3_r3",
-  // Desempates
-  "desempate_j1_r1","desempate_j2_r1","desempate_j3_r1",
-  "desempate_j1_r2","desempate_j2_r2","desempate_j3_r2"
-]);
-
