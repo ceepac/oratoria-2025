@@ -116,3 +116,12 @@ app.get("*", (_req, res) => {
 app.listen(PORT, () => {
   console.log(`✅ Servidor corriendo en http://localhost:${PORT}`);
 });
+
+const TABLAS_PERMITIDAS = new Set([
+  "evaluacion_j1_r1","evaluacion_j1_r2","evaluacion_j1_r3",
+  "evaluacion_j2_r1","evaluacion_j2_r2","evaluacion_j2_r3",
+  "evaluacion_j3_r1","evaluacion_j3_r2","evaluacion_j3_r3",
+  // 👇 NUEVAS
+  "desempate_j1_r1","desempate_j2_r1","desempate_j3_r1",
+  "desempate_j1_r2","desempate_j2_r2","desempate_j3_r2"
+]);

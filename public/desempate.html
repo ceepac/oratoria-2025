@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Desempate</title>
+  <link rel="icon" href="img/favicon.ico" type="image/x-icon"/>
+  <link rel="stylesheet" href="css/estilos.css"/>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+</head>
+<body>
+<header>
+  <img src="img/CEEPAC.png" alt="Logo CEEPAC" class="logo">
+  <img src="img/Recurso 1.png" alt="Logo Concurso" class="logo">
+</header>
+
+<main class="container">
+  <h1 id="titulo">Desempate</h1>
+  <h2 id="subtitulo"></h2>
+
+  <form id="form-evaluacion">
+    <div class="form-group">
+      <label for="participante">Concursante (empatados):</label>
+      <select id="participante" required></select>
+    </div>
+
+    <div class="form-group">
+      <label for="tema">Tema:</label>
+      <select id="tema" required></select>
+    </div>
+
+    <div class="card-datos">
+      <h3>Datos del Participante</h3>
+      <div class="info-linea"><strong>Nombre:</strong> <span id="info-nombre">-</span></div>
+      <div class="info-linea"><strong>Edad:</strong> <span id="info-edad">-</span></div>
+      <div class="info-linea"><strong>Nivel de estudios:</strong> <span id="info-nivel">-</span></div>
+      <div class="info-linea"><strong>Experiencia en oratoria:</strong> <span id="info-experiencia">-</span></div>
+      <div class="info-linea"><strong>Tema:</strong> <span id="info-tema">-</span></div>
+      <div class="info-linea"><strong>Categoría del tema:</strong> <span id="info-categoria">-</span></div>
+    </div>
+
+    <h3>Evaluación por criterio (Desempate)</h3>
+
+    <div class="form-group"><label>1. Presentación:</label>
+      <select class="criterio" name="presentacion" required>
+        <option value="">Seleccione</option><option value="1">Malo - 1</option><option value="2">Deficiente - 2</option>
+        <option value="3">Regular - 3</option><option value="4">Bueno - 4</option><option value="5">Excelente - 5</option>
+      </select>
+    </div>
+    <div class="form-group"><label>2. Dominio del tema:</label>
+      <select class="criterio" name="dominio_tema" required>
+        <option value="">Seleccione</option><option value="1">Malo - 1</option><option value="2">Deficiente - 2</option>
+        <option value="3">Regular - 3</option><option value="4">Bueno - 4</option><option value="5">Excelente - 5</option>
+      </select>
+    </div>
+    <div class="form-group"><label>3. Dominio del auditorio:</label>
+      <select class="criterio" name="dominio_auditorio" required>
+        <option value="">Seleccione</option><option value="1">Malo - 1</option><option value="2">Deficiente - 2</option>
+        <option value="3">Regular - 3</option><option value="4">Bueno - 4</option><option value="5">Excelente - 5</option>
+      </select>
+    </div>
+    <div class="form-group"><label>4. Dicción:</label>
+      <select class="criterio" name="diccion" required>
+        <option value="">Seleccione</option><option value="1">Malo - 1</option><option value="2">Deficiente - 2</option>
+        <option value="3">Regular - 3</option><option value="4">Bueno - 4</option><option value="5">Excelente - 5</option>
+      </select>
+    </div>
+    <div class="form-group"><label>5. Claridad del mensaje:</label>
+      <select class="criterio" name="claridad_mensaje" required>
+        <option value="">Seleccione</option><option value="1">Malo - 1</option><option value="2">Deficiente - 2</option>
+        <option value="3">Regular - 3</option><option value="4">Bueno - 4</option><option value="5">Excelente - 5</option>
+      </select>
+    </div>
+    <div class="form-group"><label>6. Conclusión:</label>
+      <select class="criterio" name="conclusion" required>
+        <option value="">Seleccione</option><option value="1">Malo - 1</option><option value="2">Deficiente - 2</option>
+        <option value="3">Regular - 3</option><option value="4">Bueno - 4</option><option value="5">Excelente - 5</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label for="comentarios">¿Desea agregar algún comentario?</label><br/>
+      <textarea id="comentarios" rows="4" cols="50" placeholder="Escribe aquí..."></textarea>
+    </div>
+
+    <div class="form-group">
+      <p><strong>Total:</strong> <span id="total">0</span> puntos</p>
+    </div>
+
+    <button type="submit" class="boton-principal">Guardar evaluación de desempate</button>
+    <div class="contenedor-volver"><a href="/inicio.html" class="boton-volver">Volver</a></div>
+  </form>
+</main>
+
+<footer>
+  <p>© 2025 CEEPAC. MSK // Todos los derechos reservados.</p>
+</footer>
+
+<script type="module">
+  import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
+
+  // === Ajusta con tus credenciales públicas (anon) para lecturas en cliente ===
+  const supabase = createClient(
+    'https://idvgzyyvgdbiwzgndxtk.supabase.co',
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imlkdmd6eXl2Z2RiaXd6Z25keHRrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQzMTc0MjIsImV4cCI6MjA2OTg5MzQyMn0.a8YA2MYTG0KVxu5qLe8pmia3s0lzod-R19W81VSsb7o'
+  );
+
+  // === Config ===
+  const params = new URLSearchParams(location.search);
+  const RONDA = Number(params.get('ronda') || '1');    // 1 o 2
+  const JURADO = (params.get('jurado') || 'j1').toLowerCase(); // j1|j2|j3
+  const LIMITE = (RONDA === 1) ? 7 : 3;
+  const TABLA_BASE = (j, r) => `evaluacion_${j}_r${r}`;
+  const TABLA_TB   = (j, r) => `desempate_${j}_r${r}`;
+
+  // ⚙️ Reglas de temas en desempate
+  const BLOQUEAR_TEMAS_REPETIDOS_MISMO_JURADO = false; // pon true si quieres bloquear
+
+  // UI
+  document.getElementById('titulo').textContent = `Desempate — Ronda ${RONDA}`;
+  document.getElementById('subtitulo').textContent = JURADO.toUpperCase() + ' (empates en el corte)';
+
+  // Util
+  const sumatoria = (r) =>
+    (r?.presentacion||0) + (r?.dominio_tema||0) + (r?.dominio_auditorio||0) +
+    (r?.diccion||0) + (r?.claridad_mensaje||0) + (r?.conclusion||0);
+
+  async function participantesEmpatadosEnCorte() {
+    // Traer tres jurados de la ronda base
+    const [{ data: rJ1 }, { data: rJ2 }, { data: rJ3 }] = await Promise.all([
+      supabase.from(TABLA_BASE('j1', RONDA)).select('*'),
+      supabase.from(TABLA_BASE('j2', RONDA)).select('*'),
+      supabase.from(TABLA_BASE('j3', RONDA)).select('*')
+    ]);
+
+    // Totales globales
+    const totales = {};
+    for (const row of (rJ1 || [])) totales[row.participante] = (totales[row.participante]||0) + sumatoria(row);
+    for (const row of (rJ2 || [])) totales[row.participante] = (totales[row.participante]||0) + sumatoria(row);
+    for (const row of (rJ3 || [])) totales[row.participante] = (totales[row.participante]||0) + sumatoria(row);
+
+    const ranking = Object.entries(totales)
+      .map(([p, t]) => ({ participante: p, total: t }))
+      .sort((a,b) => b.total - a.total);
+
+    if (ranking.length === 0) return [];
+
+    const cutoffIndex = Math.min(LIMITE - 1, ranking.length - 1); // 6 para R1, 2 para R2
+    const cutoffScore = ranking[cutoffIndex].total;
+
+    // Empatados en el puntaje de corte
+    const empatados = ranking.filter(r => r.total === cutoffScore).map(r => r.participante);
+
+    // Excluir ya evaluados en este desempate por este jurado
+    const { data: ya } = await supabase
+      .from(TABLA_TB(JURADO, RONDA))
+      .select('participante');
+
+    const yaSet = new Set((ya||[]).map(r => r.participante));
+    return empatados.filter(p => !yaSet.has(p));
+  }
+
+  async function cargarParticipantes() {
+    const empatados = await participantesEmpatadosEnCorte();
+    const select = document.getElementById('participante');
+    select.innerHTML = '<option value="">Selecciona un participante</option>';
+    empatados.forEach(nombre => {
+      const opt = document.createElement('option');
+      opt.value = nombre;
+      opt.textContent = nombre;
+      select.appendChild(opt);
+    });
+  }
+
+  async function cargarTemas() {
+    const participante = document.getElementById('participante').value;
+    const select = document.getElementById('tema');
+    select.innerHTML = '<option value="">Selecciona un tema</option>';
+    if (!participante) return;
+
+    // Todos los temas
+    const { data: todosTemas } = await supabase.from('temas').select('titulo').order('titulo');
+
+    if (!BLOQUEAR_TEMAS_REPETIDOS_MISMO_JURADO) {
+      (todosTemas || []).forEach(t => {
+        const opt = document.createElement('option');
+        opt.value = t.titulo; opt.textContent = t.titulo;
+        select.appendChild(opt);
+      });
+      return;
+    }
+
+    // Si se activa bloqueo: excluir tema ya usado por ESTE jurado con este participante en la ronda base
+    const { data: usados } = await supabase
+      .from(TABLA_BASE(JURADO, RONDA))
+      .select('tema')
+      .eq('participante', participante);
+
+    const usadosSet = new Set((usados||[]).map(u => u.tema));
+    (todosTemas || []).forEach(t => {
+      if (!usadosSet.has(t.titulo)) {
+        const opt = document.createElement('option');
+        opt.value = t.titulo; opt.textContent = t.titulo;
+        select.appendChild(opt);
+      }
+    });
+  }
+
+  // Inicial
+  await cargarParticipantes();
+
+  // Total dinámico
+  const criterios = document.querySelectorAll('.criterio');
+  const totalSpan = document.getElementById('total');
+  criterios.forEach(sel => {
+    sel.addEventListener('change', () => {
+      let total = 0;
+      criterios.forEach(c => total += parseInt(c.value) || 0);
+      totalSpan.textContent = total;
+    });
+  });
+
+  // Guardar
+  document.getElementById('form-evaluacion').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const tabla = TABLA_TB(JURADO, RONDA);
+    const evaluacion = {
+      jurado: JURADO,
+      ronda: String(RONDA),
+      participante: document.getElementById('participante').value,
+      tema: document.getElementById('tema').value,
+      presentacion: parseInt(document.querySelector('[name="presentacion"]').value),
+      dominio_tema: parseInt(document.querySelector('[name="dominio_tema"]').value),
+      dominio_auditorio: parseInt(document.querySelector('[name="dominio_auditorio"]').value),
+      diccion: parseInt(document.querySelector('[name="diccion"]').value),
+      claridad_mensaje: parseInt(document.querySelector('[name="claridad_mensaje"]').value),
+      conclusion: parseInt(document.querySelector('[name="conclusion"]').value),
+      comentarios: document.getElementById('comentarios').value,
+      creada_en: new Date().toISOString()
+    };
+
+    const response = await fetch('/api/evaluacion', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tabla, ...evaluacion })
+    });
+
+    if (response.ok) {
+      alert('✅ Evaluación de desempate guardada');
+      // Reset UI
+      document.getElementById('form-evaluacion').reset();
+      totalSpan.textContent = "0";
+      document.getElementById('info-nombre').textContent = '-';
+      document.getElementById('info-edad').textContent = '-';
+      document.getElementById('info-nivel').textContent = '-';
+      document.getElementById('info-experiencia').textContent = '-';
+      document.getElementById('info-tema').textContent = '-';
+      document.getElementById('info-categoria').textContent = '-';
+      document.getElementById('tema').innerHTML = '<option value="">Selecciona un tema</option>';
+
+      // Recalcular empatados restantes
+      await cargarParticipantes();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else {
+      alert('❌ Error al guardar la evaluación');
+    }
+  });
+
+  // Info participante + temas
+  document.getElementById('participante').addEventListener('change', async (e) => {
+    const nombre = e.target.value;
+    if (!nombre) return;
+
+    document.getElementById('info-nombre').textContent = nombre;
+
+    const { data } = await supabase
+      .from('participantes')
+      .select('edad, nivel_estudios, experiencia_oratoria')
+      .eq('nombre_completo', nombre)
+      .maybeSingle();
+
+    if (data) {
+      document.getElementById('info-edad').textContent = data.edad || '-';
+      document.getElementById('info-nivel').textContent = data.nivel_estudios || '-';
+      document.getElementById('info-experiencia').textContent = data.experiencia_oratoria || '-';
+    }
+
+    await cargarTemas();
+  });
+
+  // Info tema
+  document.getElementById('tema').addEventListener('change', async (e) => {
+    const titulo = e.target.value;
+    if (!titulo) return;
+    document.getElementById('info-tema').textContent = titulo;
+
+    const { data } = await supabase.from('temas').select('categoria').eq('titulo', titulo).maybeSingle();
+    if (data) document.getElementById('info-categoria').textContent = data.categoria || '-';
+  });
+</script>
+</body>
+</html>
