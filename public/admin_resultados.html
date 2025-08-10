@@ -501,29 +501,45 @@
       document.body.removeChild(a); URL.revokeObjectURL(url);
     }
     document.getElementById('btn-export-csv').addEventListener('click', async ()=>{
+      
       const usar = cbDesempates.checked;
       btnExportCSV.disabled=true;
       const ahora=new Date().toISOString().slice(0,19).replace(/[:T]/g,'-');
       const concurso=nombreConcursoInput.value.trim()||'Concurso';
       const juradosTxt=JURADOS.join(' | ');
-      // ✅ R2 sin overlay, R1 según checkbox, R3 sin overlay
-      const [f1,f2,f3]=await Promise.all([
+
+      // ✅ R2 sin overlay; incluir SIEMPRE tablas de desempate en CSV (R1 y R2)
+      const [f1,f2,f3, d1, d2] = await Promise.all([
         fetchRondaAgrupada(1,usar),
         fetchRondaAgrupada(2,false),
-        fetchRondaAgrupada(3,false)
+        fetchRondaAgrupada(3,false),
+        fetchDesempatesAplicados(1),
+        fetchDesempatesAplicados(2),
       ]);
+
       const encabezado=[
         `Concurso:,${sanitizeCSV(concurso)}`,
         `Jurados:,${sanitizeCSV(juradosTxt)}`,
         `Fecha:,${sanitizeCSV(new Date().toLocaleString())}`,
-        usar?`Nota:,Se aplicaron desempates en R1 (y R2 visibles en subtabla).`:`Nota:,Sin overlay de desempates.`,
+        usar?`Nota:,Se aplicaron desempates en R1 (R2 se muestra sin overlay; sección de desempates incluida).`:`Nota:,Sin overlay; se incluyen secciones de desempates si existen.`,
         ''
       ].join('\n');
-      const csv=[encabezado,filasToCSV(f1,'Ronda 1'),'',
-                 filasToCSV(f2,'Ronda 2'),'',
-                 filasToCSV(f3,'Ronda 3 (Finalistas)')].join('\n');
+
+      const secciones = [
+        filasToCSV(f1,'Ronda 1'),
+        d1 && d1.length ? filasToCSV(d1,'Desempates Ronda 1') : null,
+        '',
+        filasToCSV(f2,'Ronda 2'),
+        d2 && d2.length ? filasToCSV(d2,'Desempates Ronda 2') : null,
+        '',
+        filasToCSV(f3,'Ronda 3 (Finalistas)')
+      ].filter(Boolean);
+
+      const csv=[encabezado, ...secciones].join('\n');
+
       downloadCSV(`${concurso.replace(/\s+/g,'_').toLowerCase()}_evaluaciones_globales_${ahora}.csv`, csv);
       btnExportCSV.disabled=false;
+
     });
 
     /* ===== PDF (todas) ===== */
