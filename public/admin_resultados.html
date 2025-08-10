@@ -42,6 +42,8 @@
     .tabla-resultados thead th { background:#f8fafc; position:sticky; top:0; z-index:1; }
     #contenedor-tablas h3 { margin:14px 0 8px; }
 
+    .badge-des { display:inline-block; padding:2px 8px; border-radius:999px; font-size:12px; background:#eef6ff; color:#1e3a8a; border:1px solid #bfd6ff; }
+
     /* ====== PDF compacto ====== */
     @media print { header, .toolbar { display:none !important; } }
     @page { size: A4 landscape; margin: 10mm; }
@@ -61,6 +63,7 @@
     .pdf-table td { border:1px solid #e5e7eb; padding:6px; vertical-align:top; }
     .pdf-table tbody tr:nth-child(odd){ background:#fafafa; }
     .pdf-chunk-title { margin: 8px 0 6px; font-size: 13px; color:#0f172a; }
+    .pdf-note { font-size:11px; color:#334155; margin:4px 0 8px; }
 
     /* ====== Finalistas (podio) ====== */
     .finalistas-title { margin:10px 0 6px; font-size:15px; font-weight:700; color:#0f172a; text-align:center; }
@@ -107,6 +110,9 @@
     <section class="toolbar">
       <div class="lado-izq">
         <div class="form-group">
+          <label><input type="checkbox" id="cbDesempates" checked /> Aplicar desempates</label>
+        </div>
+        <div class="form-group">
           <label for="nombreConcurso"><strong>Concurso:</strong></label>
           <input id="nombreConcurso" type="text" value="Concurso de Oratoria CEEPAC 2025"/>
         </div>
@@ -142,6 +148,21 @@
           <tbody id="tbody-ronda"></tbody>
         </table>
       </div>
+
+      <!-- Tabla de desempates aplicados (solo si existen) -->
+      <div id="wrap-desempates-ronda" style="display:none; margin-top:14px;">
+        <h3>Desempates aplicados <span class="badge-des" id="badge-ronda"></span></h3>
+        <div class="tabla-wrap">
+          <table class="tabla-resultados" id="tabla-desempates-ronda">
+            <thead><tr>
+              <th>#</th><th>Participante</th><th>Tema(s)</th>
+              <th>Jurado 1</th><th>Jurado 2</th><th>Jurado 3</th>
+              <th>Total</th><th>Comentarios</th><th>Ronda</th><th>Fecha</th>
+            </tr></thead>
+            <tbody id="tbody-desempates-ronda"></tbody>
+          </table>
+        </div>
+      </div>
     </section>
 
     <!-- Vista global (visual) -->
@@ -172,7 +193,7 @@
       'Lic. Mariano Agustín Olguín Huerta'
     ];
 
-    /* Logos (opcional, se intentan cargar; si no existen, se omiten) */
+    /* Logos (opcional) */
     const USER_LOGO_LEFT  = "img/CEEPAC.png";
     const USER_LOGO_RIGHT = "img/Recurso 1.png";
 
@@ -192,7 +213,8 @@
         .sort((a,b) => b.total - a.total);
     }
 
-    async function fetchRondaAgrupada(ronda) {
+    // === Trae y agrupa por ronda, opcionalmente sustituyendo con desempates (R1/R2) ===
+    async function fetchRondaAgrupada(ronda, usarDesempates = true) {
       const jurados = ['j1', 'j2', 'j3'];
       const porParticipante = new Map();
 
@@ -210,16 +232,85 @@
         return map;
       };
 
+      // Evaluaciones normales
       const lotes = await Promise.all(
         jurados.map(j => supabase.from(`evaluacion_${j}_r${ronda}`).select('*'))
       );
 
+      // (Overlay) Desempates
+      let lotesDes = [];
+      if (usarDesempates && (ronda === 1 || ronda === 2)) {
+        lotesDes = await Promise.all(
+          jurados.map(j => supabase.from(`desempate_${j}_r${ronda}`).select('*'))
+        );
+      } else {
+        lotesDes = jurados.map(() => ({ data: [] }));
+      }
+
       lotes.forEach((res, idxJ) => {
         const colJ = `jurado${idxJ + 1}`;
-        const ultimos = ultimoPorParticipante(res.data || []);
-        ultimos.forEach(row => {
+        const ult = ultimoPorParticipante(res.data || []);
+        const ultDes = ultimoPorParticipante(lotesDes[idxJ].data || []);
+        const participantes = new Set([...ult.keys(), ...ultDes.keys()]);
+
+        participantes.forEach(p => {
+          const base = ult.get(p);
+          const des  = ultDes.get(p);   // si hay desempate, reemplaza
+          const row  = des || base;
+          if (!row) return;
+
+          if (!porParticipante.has(p)) {
+            porParticipante.set(p, {
+              participante: p, temaSet: new Set(),
+              jurado1: 0, jurado2: 0, jurado3: 0,
+              comentarios: [], ronda: row.ronda || ronda,
+              fechaMax: row.creada_en || null
+            });
+          }
+          const obj = porParticipante.get(p);
+          obj[colJ] = sumatoria(row);
+          if (row.tema) obj.temaSet.add(row.tema);
+          if (row.comentarios) obj.comentarios.push(row.comentarios);
+          if (row.creada_en && (!obj.fechaMax || new Date(row.creada_en) > new Date(obj.fechaMax))) {
+            obj.fechaMax = row.creada_en;
+          }
+        });
+      });
+
+      return mapToFilasOrdenadas(porParticipante);
+    }
+
+    // === Devuelve SOLO los registros de desempate (para subtabla informativa) ===
+    async function fetchDesempatesAplicados(ronda) {
+      if (!(ronda === 1 || ronda === 2)) return [];
+      const jurados = ['j1','j2','j3'];
+      const porParticipante = new Map();
+
+      const ultimoPorParticipante = (rows) => {
+        const map = new Map();
+        (rows || []).forEach(r => {
+          const p = (r.participante || '').trim();
+          if (!p) return;
+          const prev = map.get(p);
+          if (!prev) { map.set(p, r); return; }
+          const d1 = prev.creada_en ? new Date(prev.creada_en) : null;
+          const d2 = r.creada_en ? new Date(r.creada_en) : null;
+          if (!d1 || (d2 && d2 > d1)) map.set(p, r);
+        });
+        return map;
+      };
+
+      const lotesDes = await Promise.all(
+        jurados.map(j => supabase.from(`desempate_${j}_r${ronda}`).select('*'))
+      );
+
+      lotesDes.forEach((res, idxJ) => {
+        const colJ = `jurado${idxJ + 1}`;
+        const ult = ultimoPorParticipante(res.data || []);
+        ult.forEach(row => {
           const p = (row.participante || '').trim();
           if (!p) return;
+
           if (!porParticipante.has(p)) {
             porParticipante.set(p, {
               participante: p, temaSet: new Set(),
@@ -265,9 +356,16 @@
     /* DOM */
     const nombreConcursoInput = document.getElementById('nombreConcurso');
     const rondaSelect   = document.getElementById('rondaSelect');
+    const cbDesempates  = document.getElementById('cbDesempates');
+
     const seccionRonda  = document.getElementById('seccion-ronda');
     const tituloRonda   = document.getElementById('titulo-ronda');
     const tbodyRonda    = document.getElementById('tbody-ronda');
+
+    const wrapDesRonda  = document.getElementById('wrap-desempates-ronda');
+    const badgeRonda    = document.getElementById('badge-ronda');
+    const tbodyDesRonda = document.getElementById('tbody-desempates-ronda');
+
     const seccionGlobal = document.getElementById('seccion-globales');
     const contenedor    = document.getElementById('contenedor-tablas');
     const btnGlobal     = document.getElementById('btn-global');
@@ -276,15 +374,36 @@
     const btnExportPDF  = document.getElementById('btn-export-pdf');
 
     /* Visual: ver una ronda */
-    rondaSelect.addEventListener('change', async () => {
-      const ronda = rondaSelect.value;
+    async function pintarRonda() {
+      const ronda = +rondaSelect.value;
       if (!ronda) { seccionRonda.style.display = 'none'; return; }
-      const filas = await fetchRondaAgrupada(ronda);
-      tituloRonda.textContent = (ronda==='3') ? 'Finalistas (Ronda 3)' : `Resultados por Ronda ${ronda}`;
+
+      const usar = cbDesempates.checked;
+      const [filas, filasDes] = await Promise.all([
+        fetchRondaAgrupada(ronda, usar),
+        usar ? fetchDesempatesAplicados(ronda) : Promise.resolve([])
+      ]);
+
+      tituloRonda.textContent = (ronda===3) ? 'Finalistas (Ronda 3)' : `Resultados por Ronda ${ronda}`;
       seccionRonda.style.display = 'block';
       seccionGlobal.style.display = 'none';
       btnOcultar.style.display = 'inline-flex';
       renderTbodyFilas(tbodyRonda, filas);
+
+      // Subtabla de desempates
+      if (filasDes.length) {
+        wrapDesRonda.style.display = 'block';
+        badgeRonda.textContent = `Ronda ${ronda}`;
+        renderTbodyFilas(tbodyDesRonda, filasDes);
+      } else {
+        wrapDesRonda.style.display = 'none';
+        tbodyDesRonda.innerHTML = '';
+      }
+    }
+
+    rondaSelect.addEventListener('change', pintarRonda);
+    cbDesempates.addEventListener('change', () => {
+      if (seccionRonda.style.display !== 'none') pintarRonda();
     });
 
     /* Visual: ver globales */
@@ -294,8 +413,13 @@
       btnOcultar.style.display = 'inline-flex';
       contenedor.innerHTML = '';
 
+      const usar = cbDesempates.checked;
+
       for (const ronda of [1,2,3]) {
-        const filas = await fetchRondaAgrupada(ronda);
+        const [filas, filasDes] = await Promise.all([
+          fetchRondaAgrupada(ronda, usar),
+          usar ? fetchDesempatesAplicados(ronda) : Promise.resolve([])
+        ]);
 
         const titulo = document.createElement('h3');
         titulo.textContent = (ronda===3) ? 'Finalistas (Ronda 3)' : `Ronda ${ronda}`;
@@ -311,7 +435,6 @@
           </tr></thead><tbody></tbody>`;
         const tbody = tabla.querySelector('tbody');
 
-        // Medallas en vista global también
         filas.forEach((row, i) => {
           const medal = (ronda===3 && i<3) ? (i===0?'🥇':i===1?'🥈':'🥉') : (i+1);
           const tr = document.createElement('tr');
@@ -332,6 +455,21 @@
 
         wrap.appendChild(tabla);
         contenedor.appendChild(wrap);
+
+        // Subtabla de desempates (si hay)
+        if (filasDes.length) {
+          const t2 = document.createElement('h3');
+          t2.innerHTML = `Desempates aplicados <span class="badge-des">Ronda ${ronda}</span>`;
+          contenedor.appendChild(t2);
+
+          const wrap2 = document.createElement('div'); wrap2.className='tabla-wrap';
+          const tabla2 = document.createElement('table'); tabla2.className='tabla-resultados';
+          tabla2.innerHTML = tabla.innerHTML; // mismo header
+          const tbody2 = tabla2.querySelector('tbody');
+          renderTbodyFilas(tbody2, filasDes);
+          wrap2.appendChild(tabla2);
+          contenedor.appendChild(wrap2);
+        }
       }
     });
 
@@ -356,16 +494,18 @@
       const a=document.createElement('a'); a.href=url; a.download=filename; document.body.appendChild(a); a.click();
       document.body.removeChild(a); URL.revokeObjectURL(url);
     }
-    btnExportCSV.addEventListener('click', async ()=>{
+    document.getElementById('btn-export-csv').addEventListener('click', async ()=>{
+      const usar = cbDesempates.checked;
       btnExportCSV.disabled=true;
       const ahora=new Date().toISOString().slice(0,19).replace(/[:T]/g,'-');
       const concurso=nombreConcursoInput.value.trim()||'Concurso';
       const juradosTxt=JURADOS.join(' | ');
-      const [f1,f2,f3]=await Promise.all([fetchRondaAgrupada(1),fetchRondaAgrupada(2),fetchRondaAgrupada(3)]);
+      const [f1,f2,f3]=await Promise.all([fetchRondaAgrupada(1,usar),fetchRondaAgrupada(2,usar),fetchRondaAgrupada(3,usar)]);
       const encabezado=[
         `Concurso:,${sanitizeCSV(concurso)}`,
         `Jurados:,${sanitizeCSV(juradosTxt)}`,
         `Fecha:,${sanitizeCSV(new Date().toLocaleString())}`,
+        usar?`Nota:,Se aplicaron desempates en R1/R2 (si existen).`:`Nota:,Sin desempates.`,
         ''
       ].join('\n');
       const csv=[encabezado,filasToCSV(f1,'Ronda 1'),'',
@@ -411,7 +551,7 @@
         </table>`;
     }
 
-    function buildPDFContainer(bloques, concurso, jurados, logos){
+    function buildPDFContainer(bloques, concurso, jurados, logos, usarDes) {
       const cont=document.createElement('div');
 
       // Header
@@ -426,6 +566,13 @@
       const sub=document.createElement('div'); sub.className='pdf-submeta';
       sub.textContent=`Jurados: ${jurados.join(' • ')}`;
       cont.appendChild(sub);
+
+      if (usarDes) {
+        const note = document.createElement('div');
+        note.className = 'pdf-note';
+        note.textContent = 'Nota: Se aplicaron desempates en Ronda 1 y Ronda 2 (si existen).';
+        cont.appendChild(note);
+      }
 
       bloques.forEach((b, rondaIdx)=>{
         // Numerar filas
@@ -465,7 +612,6 @@
           tituloF.textContent='Finalistas (Ronda 3)';
           cont.appendChild(tituloF);
 
-          // Podio (los tres primeros)
           const top3 = filasEnumeradas.slice(0,3);
           const podio=document.createElement('div');
           podio.className='podio';
@@ -491,7 +637,6 @@
           `;
           cont.appendChild(podio);
 
-          // Medallas en la columna "#"
           filasEnumeradas = filasEnumeradas.map((r,i)=>({
             ...r,
             medal: i===0?'🥇':i===1?'🥈':i===2?'🥉':r.idx
@@ -510,6 +655,17 @@
           const wrap=document.createElement('div');
           wrap.innerHTML = makeTableHTML(filasEnumeradas);
           cont.appendChild(wrap);
+        }
+
+        // Si hay subtabla de desempates para esa ronda, inclúyela
+        if (b.desempates && b.desempates.length) {
+          const t2=document.createElement('div');
+          t2.className='pdf-chunk-title';
+          t2.textContent = `Desempates aplicados (Ronda ${b.ronda})`;
+          cont.appendChild(t2);
+          const wrap2=document.createElement('div');
+          wrap2.innerHTML = makeTableHTML(b.desempates);
+          cont.appendChild(wrap2);
         }
 
         // Firmas al final de cada ronda
@@ -532,26 +688,33 @@
       return cont;
     }
 
-    btnExportPDF.addEventListener('click', async ()=>{
+    document.getElementById('btn-export-pdf').addEventListener('click', async ()=>{
       btnExportPDF.disabled=true;
       const h2p=window.html2pdf;
       if(!h2p){ alert('No se pudo cargar el generador de PDF. Revisa tu conexión.'); btnExportPDF.disabled=false; return; }
 
       const ahora=new Date().toISOString().slice(0,19).replace(/[:T]/g,'-');
       const concurso=nombreConcursoInput.value.trim()||'Concurso';
+      const usar = cbDesempates.checked;
 
-      // Datos
-      const [f1,f2,f3]=await Promise.all([fetchRondaAgrupada(1),fetchRondaAgrupada(2),fetchRondaAgrupada(3)]);
+      const [f1,f2,f3, d1, d2] = await Promise.all([
+        fetchRondaAgrupada(1,usar),
+        fetchRondaAgrupada(2,usar),
+        fetchRondaAgrupada(3,usar),
+        usar ? fetchDesempatesAplicados(1) : Promise.resolve([]),
+        usar ? fetchDesempatesAplicados(2) : Promise.resolve([]),
+      ]);
 
-      // Logos -> dataURL (si falla, se omiten)
-      async function safeDataURL(path){ try{ const res=await fetch(path,{mode:'cors'}); if(!res.ok) throw 0; const b=await res.blob(); return await new Promise(r=>{ const fr=new FileReader(); fr.onload=()=>r(fr.result); fr.readAsDataURL(b); }); } catch{return null;} }
-      const [logoLeft, logoRight] = await Promise.all([ safeDataURL(USER_LOGO_LEFT), safeDataURL(USER_LOGO_RIGHT) ]);
+      const [logoLeft, logoRight] = await Promise.all([ toDataURL(USER_LOGO_LEFT), toDataURL(USER_LOGO_RIGHT) ]);
 
-      // Contenido PDF
       const pdfRoot=document.getElementById('pdf-root'); pdfRoot.innerHTML='';
       const cont=buildPDFContainer(
-        [{ronda:1,filas:f1},{ronda:2,filas:f2},{ronda:3,filas:f3}],
-        concurso, JURADOS, { left: logoLeft, right: logoRight }
+        [
+          {ronda:1, filas:f1, desempates:d1},
+          {ronda:2, filas:f2, desempates:d2},
+          {ronda:3, filas:f3, desempates:[]}
+        ],
+        concurso, JURADOS, { left: logoLeft, right: logoRight }, usar
       );
       pdfRoot.appendChild(cont);
 
