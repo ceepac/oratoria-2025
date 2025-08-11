@@ -413,47 +413,45 @@ input[type="text"], input[type="number"], select, button { max-width: 100%; }
 /* Variante “principal” (magenta) y “secundaria” (gris) */
 .btn-primaria { background:#b0176b; color:#fff; }
 .btn-secundaria { background:#eef2f7; color:#1e293b; }
-/* === Corrección: que SOLO los botones dentro del menú del jurado sean fluidos en móvil === */
+/* === SOLO menú del jurado: botones proporcionados y 100% responsivo === */
+/* No tocamos .boton-principal / .boton-secundario globales */
 
-/* 1) Por defecto (desktop/tablet): botones con ancho auto y altura moderada */
-.boton-principal,
-.boton-secundario{
-  width: auto;
-  min-height: 44px;
-  padding: 10px 14px;
-  font-size: 16px;
-}
-
-/* 2) Menú del jurado: grid responsivo (ya lo tienes) + botones fluidos SOLO dentro de ese contenedor */
-.botones-jurados{
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 14px;
-  justify-items: stretch;
-}
-@media (min-width: 520px){ .botones-jurados{ grid-template-columns: repeat(2, 1fr); } }
-@media (min-width: 900px){ .botones-jurados{ grid-template-columns: repeat(3, 1fr); } }
-
-/* Dentro del menú del jurado, que sí ocupen 100% y altura cómoda en pantallas chicas */
-.botones-jurados .boton-principal,
-.botones-jurados .boton-secundario{
-  width: 100%;
-  min-height: 56px;
-  padding: 12px 16px;
-  white-space: normal; /* permite 2 líneas si hace falta */
-}
-
-/* 3) En móvil, mantén los botones del menú fluidos; fuera del menú quedan auto (no enormes) */
-@media (max-width: 768px){
-  .botones-jurados .boton-principal,
-  .botones-jurados .boton-secundario{ max-width: none; }
-}
-
-/* 4) Si antes forzabas min-width a los enlaces del menú, desactívalo para permitir el grid */
-.botones-jurados a{ min-width: 0; }
-
-/* 5) Si tenías reglas especiales para 4º/5º botón, desactívalas en pantallas chicas */
-@media (max-width: 900px){
+@media (max-width: 768px) {
+  .botones-jurados{
+    display:grid;
+    grid-template-columns: 1fr;           /* 1 por fila en móvil */
+    gap:12px;
+  }
+  .botones-jurados a{
+    display:flex; align-items:center; justify-content:center;
+    width:100%;
+    min-height:56px;                       /* cómodo al tacto */
+    padding:12px 16px;
+    border-radius:16px;
+    white-space:normal;                    /* deja 2 líneas si hace falta */
+    line-height:1.2;
+    font-weight:700;
+    font-size:clamp(14px, 3.6vw, 18px);    /* escala suave por ancho */
+    min-width:0 !important;                /* elimina límites antiguos */
+    max-width:none !important;
+  }
+  /* Si había spans manuales para 4º/5º botón, anúlalos en móvil */
   .botones-jurados a:nth-child(4),
-  .botones-jurados a:nth-child(5){ grid-column: auto; }
+  .botones-jurados a:nth-child(5){ grid-column:auto; }
+}
+
+@media (min-width: 769px) and (max-width: 1024px){
+  .botones-jurados{ display:grid; grid-template-columns:repeat(2,1fr); gap:14px; }
+  .botones-jurados a{ min-height:52px; font-size:16px; }
+}
+
+@media (min-width: 1025px){
+  .botones-jurados{ display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
+  .botones-jurados a{ min-height:52px; font-size:16px; }
+}
+
+/* Apaisado de móvil (pantallas bajitas): usa 3 columnas, botones más compactos */
+@media (orientation: landscape) and (max-height: 420px){
+  .botones-jurados{ grid-template-columns:repeat(3,1fr); }
+  .botones-jurados a{ min-height:48px; padding:10px 12px; font-size:15px; }
 }
