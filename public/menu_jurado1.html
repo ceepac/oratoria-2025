@@ -6,6 +6,18 @@
   <title>Jurado 1 | Concurso de Oratoria 2025</title>
   <link rel="icon" href="img/favicon.ico" type="image/x-icon" />
   <link rel="stylesheet" href="css/estilos.css" />
+  <style>
+/* Botones responsivos en menú del jurado */
+.botones-jurados { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; }
+.boton-principal, .boton-secundario {
+  display: inline-flex; align-items:center; justify-content:center;
+  padding: 10px 14px; border-radius: 10px; font-weight: 600; min-height: 44px;
+  text-align:center; text-decoration:none;
+}
+@media (max-width: 680px) {
+  .boton-principal, .boton-secundario { width: 100%; font-size: 16px; }
+}
+</style>
 </head>
 <body>
   <header>
