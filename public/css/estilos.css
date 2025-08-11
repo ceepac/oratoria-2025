@@ -413,51 +413,47 @@ input[type="text"], input[type="number"], select, button { max-width: 100%; }
 /* Variante “principal” (magenta) y “secundaria” (gris) */
 .btn-primaria { background:#b0176b; color:#fff; }
 .btn-secundaria { background:#eef2f7; color:#1e293b; }
-/* === FIX botones menú jurado (responsivo) === */
-.botones-jurados{
-  display:grid;
-  grid-template-columns: 1fr;     /* 1 col en móvil */
-  gap: 14px;
-  justify-items: stretch;         /* que ocupen todo el ancho de la columna */
-}
+/* === Corrección: que SOLO los botones dentro del menú del jurado sean fluidos en móvil === */
 
-@media (min-width: 520px){
-  .botones-jurados{ grid-template-columns: repeat(2, 1fr); } /* 2 cols */
-}
-@media (min-width: 900px){
-  .botones-jurados{ grid-template-columns: repeat(3, 1fr); } /* 3 cols */
-}
-
-/* Los enlaces-botón ya no fuerzan min-width fijo */
-.botones-jurados a{
-  width: 100%;
-  min-width: 0;                  /* ← antes 200px: lo quitamos */
-}
-
-/* Botones con tamaño y legibilidad constantes */
+/* 1) Por defecto (desktop/tablet): botones con ancho auto y altura moderada */
 .boton-principal,
 .boton-secundario{
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+  width: auto;
+  min-height: 44px;
+  padding: 10px 14px;
+  font-size: 16px;
+}
+
+/* 2) Menú del jurado: grid responsivo (ya lo tienes) + botones fluidos SOLO dentro de ese contenedor */
+.botones-jurados{
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+  justify-items: stretch;
+}
+@media (min-width: 520px){ .botones-jurados{ grid-template-columns: repeat(2, 1fr); } }
+@media (min-width: 900px){ .botones-jurados{ grid-template-columns: repeat(3, 1fr); } }
+
+/* Dentro del menú del jurado, que sí ocupen 100% y altura cómoda en pantallas chicas */
+.botones-jurados .boton-principal,
+.botones-jurados .boton-secundario{
   width: 100%;
-  min-height: 56px;              /* táctil cómodo */
+  min-height: 56px;
   padding: 12px 16px;
-  border-radius: 16px;
-  box-sizing: border-box;
-  white-space: normal;           /* permite 2 líneas si hace falta */
+  white-space: normal; /* permite 2 líneas si hace falta */
 }
 
-/* En móvil, quitar el tope de 280px para que ocupen el ancho */
+/* 3) En móvil, mantén los botones del menú fluidos; fuera del menú quedan auto (no enormes) */
 @media (max-width: 768px){
-  .boton-principal,
-  .boton-secundario{ max-width: none; }
+  .botones-jurados .boton-principal,
+  .botones-jurados .boton-secundario{ max-width: none; }
 }
 
-/* Si tenías posiciones especiales para 4° y 5° botón, desactívalas en pantallas chicas */
+/* 4) Si antes forzabas min-width a los enlaces del menú, desactívalo para permitir el grid */
+.botones-jurados a{ min-width: 0; }
+
+/* 5) Si tenías reglas especiales para 4º/5º botón, desactívalas en pantallas chicas */
 @media (max-width: 900px){
   .botones-jurados a:nth-child(4),
-  .botones-jurados a:nth-child(5){
-    grid-column: auto;
-  }
+  .botones-jurados a:nth-child(5){ grid-column: auto; }
 }
