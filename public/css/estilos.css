@@ -377,3 +377,87 @@ input[type="text"], input[type="number"], select, button { max-width: 100%; }
   /* Secciones que antes se veían “apretadas” */
   .pdf-header { flex-direction: column; align-items: center; text-align: center; }
 }
+/* ——— Menú Jurado: grid responsivo de botones ——— */
+.menu-grid { 
+  display: grid; 
+  grid-template-columns: 1fr; 
+  gap: 12px; 
+}
+
+/* 2 columnas cuando hay algo más de ancho */
+@media (min-width: 520px) {
+  .menu-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* 3 columnas en tablets/apaisado */
+@media (min-width: 900px) {
+  .menu-grid { grid-template-columns: repeat(3, 1fr); }
+}
+
+/* Botones con altura/tipografía consistente */
+.btn-menu {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 56px;            /* accesible */
+  padding: 12px 16px;
+  border-radius: 16px;
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: center;
+  text-decoration: none;
+  white-space: normal;         /* permite 2 líneas si hace falta */
+}
+
+/* Variante “principal” (magenta) y “secundaria” (gris) */
+.btn-primaria { background:#b0176b; color:#fff; }
+.btn-secundaria { background:#eef2f7; color:#1e293b; }
+/* === FIX botones menú jurado (responsivo) === */
+.botones-jurados{
+  display:grid;
+  grid-template-columns: 1fr;     /* 1 col en móvil */
+  gap: 14px;
+  justify-items: stretch;         /* que ocupen todo el ancho de la columna */
+}
+
+@media (min-width: 520px){
+  .botones-jurados{ grid-template-columns: repeat(2, 1fr); } /* 2 cols */
+}
+@media (min-width: 900px){
+  .botones-jurados{ grid-template-columns: repeat(3, 1fr); } /* 3 cols */
+}
+
+/* Los enlaces-botón ya no fuerzan min-width fijo */
+.botones-jurados a{
+  width: 100%;
+  min-width: 0;                  /* ← antes 200px: lo quitamos */
+}
+
+/* Botones con tamaño y legibilidad constantes */
+.boton-principal,
+.boton-secundario{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 56px;              /* táctil cómodo */
+  padding: 12px 16px;
+  border-radius: 16px;
+  box-sizing: border-box;
+  white-space: normal;           /* permite 2 líneas si hace falta */
+}
+
+/* En móvil, quitar el tope de 280px para que ocupen el ancho */
+@media (max-width: 768px){
+  .boton-principal,
+  .boton-secundario{ max-width: none; }
+}
+
+/* Si tenías posiciones especiales para 4° y 5° botón, desactívalas en pantallas chicas */
+@media (max-width: 900px){
+  .botones-jurados a:nth-child(4),
+  .botones-jurados a:nth-child(5){
+    grid-column: auto;
+  }
+}
