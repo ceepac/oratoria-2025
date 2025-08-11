@@ -341,3 +341,39 @@ main .datos-participante span {
     grid-template-columns: 1fr;
   }
 }
+/* === Responsivo universal (móvil primero) === */
+img, video { max-width: 100%; height: auto; }
+
+/* Tablas responsivas: scroll horizontal suave en pantallas pequeñas */
+.table-responsive { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.table-responsive > table { min-width: 720px; } /* ajusta a tu mínimo de columnas */
+
+/* Contenedores y toolbars */
+.container { padding-left: 12px; padding-right: 12px; }
+.toolbar { display: flex; gap: 12px; flex-wrap: wrap; }
+.toolbar .lado-izq, .toolbar .lado-der { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* Inputs y botones se adaptan */
+input[type="text"], input[type="number"], select, button { max-width: 100%; }
+
+/* Cabeceras de tablas pegajosas en móvil también */
+.tabla-resultados thead th { position: sticky; top: 0; z-index: 1; }
+
+/* Ajustes en pantallas pequeñas */
+@media (max-width: 640px) {
+  header .logo { height: 36px; }
+  .toolbar { flex-direction: column; align-items: stretch; }
+  .toolbar .lado-izq, .toolbar .lado-der { width: 100%; }
+  .toolbar .btn, .btn { width: 100%; justify-content: center; }
+
+  /* Formularios verticales */
+  .form-group { width: 100%; display: flex; flex-direction: column; align-items: stretch; }
+  input[type="text"], input[type="number"], select { width: 100%; }
+
+  /* Tablas más compactas */
+  .tabla-resultados th, .tabla-resultados td { padding: 6px 8px; font-size: 13px; }
+  .tabla-resultados td strong { font-size: 13px; }
+
+  /* Secciones que antes se veían “apretadas” */
+  .pdf-header { flex-direction: column; align-items: center; text-align: center; }
+}
